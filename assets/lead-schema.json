@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "B2B Lead",
+  "type": "object",
+  "properties": {
+    "company": { "type": "string" },
+    "country": { "type": "string" },
+    "segment": { "type": "string" },
+    "match_reason": { "type": "string" },
+    "estimated_annual_procurement_usd": {
+      "type": "object",
+      "properties": {
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "basis": { "type": "string" },
+        "estimated_at": {
+          "type": "string",
+          "format": "date",
+          "description": "估算所依据的公开数据日期；代理指标时效性强，复查时优先更新此项"
+        }
+      },
+      "required": ["min", "max", "basis"]
+    },
+    "score": { "type": "number" },
+    "risk_level": { "type": "string", "enum": ["low", "medium", "high"] },
+    "due_diligence_summary": { "type": "string" },
+    "contacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "enum": ["email", "phone", "linkedin", "website_form"]
+          },
+          "value": { "type": "string" },
+          "role": { "type": "string" },
+          "source": { "type": "string", "format": "uri" },
+          "confidence": { "type": "string", "enum": ["high", "medium", "low"] }
+        },
+        "required": ["channel", "value", "source", "confidence"]
+      }
+    },
+    "sources": {
+      "type": "array",
+      "items": { "type": "string", "format": "uri" }
+    },
+    "priority": { "type": "integer" }
+  },
+  "required": [
+    "company",
+    "country",
+    "segment",
+    "match_reason",
+    "risk_level",
+    "due_diligence_summary",
+    "contacts",
+    "sources"
+  ]
+}

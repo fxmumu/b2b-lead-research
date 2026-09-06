@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "capability-manifest.json",
+  "title": "Host capability manifest",
+  "type": "object",
+  "required": ["host", "capabilities"],
+  "properties": {
+    "host": {
+      "type": "string",
+      "description": "Host identifier, must match the JSON filename without .json, except files starting with _"
+    },
+    "detect_env": {
+      "type": "object",
+      "description": "Environment markers used by detect_backend.py to auto-detect this host when --host is omitted",
+      "properties": {
+        "env": {
+          "type": "object",
+          "description": "Map of environment variable name to required value; a value of true means the variable only needs to be set and non-empty"
+        },
+        "argv0_contains": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "capabilities": {
+      "type": "object",
+      "required": ["search", "web_read"],
+      "properties": {
+        "search": { "$ref": "#/$defs/capability" },
+        "web_read": { "$ref": "#/$defs/capability" },
+        "linkedin": { "$ref": "#/$defs/capability" }
+      },
+      "additionalProperties": false
+    },
+    "permissions_hints": {
+      "type": "array",
+      "description": "Tool-permission rule strings the host may prompt the user to pre-approve",
+      "items": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "capability": {
+      "type": "object",
+      "required": ["backend"],
+      "properties": {
+        "backend": {
+          "type": "string",
+          "enum": ["native", "shell", "external_cli", "public_only", "none"],
+          "description": "native = host built-in tool; shell = shell command pattern; external_cli = agent-reach/mcporter; public_only = no login-gated access; none = unavailable"
+        },
+        "tool": {
+          "type": "string",
+          "description": "For backend=native: the host tool name to invoke"
+        },
+        "invocation": {
+          "type": "string",
+          "description": "For backend=shell: command template with {url} / {query} placeholders"
+        },
+        "note": {
+          "type": "string",
+          "description": "Behavioral caveats the agent must respect when using this capability"
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "backend": { "const": "native" } } },
+          "then": { "required": ["tool"] }
+        },
+        {
+          "if": { "properties": { "backend": { "const": "shell" } } },
+          "then": { "required": ["invocation"] }
+        }
+      ]
+    }
+  }
+}

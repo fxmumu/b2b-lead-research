@@ -1,0 +1,10 @@
+# User-maintained configuration: contains company identity, ICP and market strategy.
+# Keep local; the repo ships only the template.
+config/leads.yaml
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Runtime artifacts of research sessions
+lead-research/

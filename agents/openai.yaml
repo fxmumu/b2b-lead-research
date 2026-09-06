@@ -1,0 +1,4 @@
+interface:
+  display_name: "B2B Lead Research"
+  short_description: "Find and verify B2B potential customers with sourced contacts"
+  default_prompt: "Use $b2b-lead-research to find and qualify potential customers for my product."

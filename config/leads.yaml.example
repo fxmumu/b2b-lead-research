@@ -1,0 +1,62 @@
+# =====================================================
+# b2b-lead-research 配置模板
+# 复制为 config/leads.yaml 后按你的产品填写；leads.yaml 被 gitignore，
+# 包含公司信息、ICP 与市场策略，保留在本地。
+# =====================================================
+
+company:
+  name_zh: ""                      # 公司中文名
+  name_en: ""                      # 公司英文名
+  website: ""                      # 官网 URL
+  contact_email: ""                # 对外联系邮箱
+  contact_phone: ""                # 对外联系电话
+  address: ""                      # 地址
+  product_or_service: ""           # 一句话说明卖什么
+  key_differentiators:             # 2-4 条，写具体事实（产能、标准、认证），开发信会挑选引用
+    - ""
+
+supply:
+  annual_capacity: ""              # 如 "12000+ 吨/年"
+  minimum_order: ""                # 如 "按项目/询价"
+  lead_time_days: ""               # 如 "30"
+  fob_port: ""                     # 如 "Tianjin"
+  oem_odm: true
+
+icp:
+  customer_types: []               # 目标客户类型，如 EPC / 安装商 / 分销商 / 开发商
+  type_weights: {}                 # 各类型权重 1-5，如 {工商业 EPC: 5, 分销商: 4}
+  min_company_employees: 50        # 最低员工数门槛（对小市场可调低）
+  min_annual_revenue_usd: 5000000
+  ideal_annual_procurement_usd: [100000, 2000000]  # 理想年采购额区间
+  min_recent_projects: 3           # 近 24 个月最少项目/新闻数
+
+market:
+  target_regions: []               # 目标国家/地区
+  region_weights: {}               # 地区权重（乘到总分），如 {沙特: 3}
+  exclude_keywords: []             # 排除关键词，如 [逆变器, 融资机构]
+  top_n: 10                        # 主名单数量
+  backup_n: 20                     # 备选池数量
+
+scoring:
+  weights:                         # 四项权重，总和应为 1
+    fit: 0.35
+    volume: 0.30
+    activity: 0.20
+    accessibility: 0.15
+  volume_tiers_annual_usd:         # 年采购额分档（A 最高）
+    A: 2000000
+    B: 500000
+    C: 100000
+    D: 0
+  min_score: 0.55                  # 低于此分进备选池
+
+output:
+  contact_preference: ["email", "phone", "linkedin"]
+  include_outreach_drafts: true
+  outreach_language: "en"
+  format: "markdown_table"
+
+verification:
+  require_official_source_for_email: true   # true 时主名单邮箱必须 high 置信度
+  min_cross_check_sources: 2                # medium 置信度所需独立来源数
+  never_guess_email: true

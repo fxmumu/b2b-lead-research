@@ -1,0 +1,25 @@
+{
+  "host": "codex",
+  "detect_env": {
+    "env": {
+      "CODEX_SANDBOX": true
+    },
+    "argv0_contains": ["codex"]
+  },
+  "capabilities": {
+    "search": {
+      "backend": "native",
+      "tool": "search",
+      "note": "Host built-in web search. Carry the source URLs into the lead record."
+    },
+    "web_read": {
+      "backend": "native",
+      "tool": "open_page",
+      "note": "Host built-in page reader. For raw HTML, PDFs, or when the page requires no auth, shell fallback is allowed."
+    },
+    "linkedin": {
+      "backend": "public_only",
+      "note": "No login-gated LinkedIn access. Use public LinkedIn pages via open_page, or the Agent Reach LinkedIn MCP when its session is verified. Never guess profile URLs."
+    }
+  }
+}
