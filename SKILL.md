@@ -1,16 +1,15 @@
 ---
 name: b2b-lead-research
-description: Research, qualify, and verify B2B potential customers/leads for a product or service, producing a prioritized, sourced contact list with due-diligence notes and outreach drafts. Use when the user asks to 找客户、获客、开发客户、找潜在客户、客户名单、找经销商/采购商/EPC/买家，or "find leads / find potential customers / lead generation / customer acquisition / find buyers". Reads a user-maintained config at config/leads.yaml.
+description: Research, qualify, and verify B2B potential customers/leads for a product or service, producing a prioritized, sourced contact list with due-diligence notes and outreach drafts. Use when the user asks to 找客户、获客、开发客户、找潜在客户、客户名单、找经销商/采购商/EPC/买家，or "find leads / find potential customers / lead generation / customer acquisition / find buyers". Reads a user-maintained config at leads.yaml in the working directory.
 ---
 
 # B2B Lead Research
 
 ## 执行顺序
 
-先读 `config/leads.yaml`。它定义产品、供货能力、目标客户画像（ICP）、目标市场、打分权重和输出参数。配置缺失或关键字段为空时，先向用户索要，不要臆造。
-
 按以下步骤执行：
 
+0. 配置与目标确认
 1. 拆解搜索计划
 2. 线索发现（含去重）
 3. 资格筛选、体量估算与可触达性过滤
@@ -19,16 +18,33 @@ description: Research, qualify, and verify B2B potential customers/leads for a p
 6. 打分排序
 7. 汇总交付
 
+## Step 0: 配置与目标确认
+
+先读工作目录下的 `leads.yaml`（相对于当前会话工作目录，不在 skill 目录内）。它定义产品、供货能力、目标客户画像（ICP）、目标市场、打分权重和输出参数。
+
+- 文件不存在时：把 `config/leads.yaml.example` 复制为工作目录的 `leads.yaml`，然后向用户索要关键字段填写，不要臆造。
+- 文件存在但关键字段为空时：先向用户索要，不要臆造。
+
+**开跑前必须向用户列出本次任务的情况与目标，逐项确认后再进入 Step 1**，内容包括：
+
+1. 配置摘要：产品/服务、目标客户类型、目标市场与地区权重、主名单/备选池数量
+2. 本次搜索计划：将覆盖的来源类别（目录、展会、政府备案、项目新闻反查等）与查询语言
+3. 已知约束：`exclude_keywords`、可触达性过滤、`min_score` 门槛
+4. 交付物：主名单 + 备选池、是否生成开发信草稿
+
+用户确认后，把该摘要连同配置版本（可注明 `leads.yaml` 的修改时间）一并记入 `lead-research/brief.md`，作为断点续跑时的目标基线。用户在确认环节修改了任何字段，先落盘到 `leads.yaml` 再继续。
+
 ## 中间产物与断点续跑
 
 全量任务涉及数十家候选、上百次页面抓取，单次会话无法完整承载，必须增量落盘：
 
-- 在用户工作目录下创建 `lead-research/` 目录，维护三个文件：
+- 在用户工作目录下创建 `lead-research/` 目录，维护四个文件：
+  - `brief.md` — Step 0 确认过的任务简报（配置摘要 + 搜索计划 + 交付物）
   - `candidates.jsonl` — 每家候选一条 JSON（schema 见 assets/lead-schema.json，可先留空未验证字段）
   - `scores.jsonl` — {company, fit, volume, activity, accessibility, region_weight, score, risk_level}
   - `outreach/` — 开发信草稿，一客户一文件
 - 每完成一家候选的一个阶段（发现/筛选/背调/验证/打分），立即把该阶段结果追加写入，不要攒到最后批量写。
-- 恢复任务时：先读这三个文件，跳过已有完整记录的候选；字段残缺的候选视为未完成，只补缺失阶段。
+- 恢复任务时：先读这四个文件，跳过已有完整记录的候选；字段残缺的候选视为未完成，只补缺失阶段。配置以工作目录 `leads.yaml` 为准，若它相对 `brief.md` 记录的基线已变更，向用户说明差异并确认是否按新配置续跑。
 - 汇报进度时以落盘记录为准，不以本次会话记忆为准。
 
 ## Step 1: 拆解搜索计划
@@ -127,6 +143,6 @@ python3 scripts/detect_backend.py
 - [references/tools.md](references/tools.md) — 能力后端解析与降级链
 - [references/outreach.md](references/outreach.md) — 开发信模板
 - [assets/lead-schema.json](assets/lead-schema.json) — 输出字段标准
-- [config/leads.yaml](config/leads.yaml) — 你的产品与 ICP 配置
+- [config/leads.yaml.example](config/leads.yaml.example) — 配置模板（复制到工作目录的 leads.yaml 使用）
 - [scripts/detect_backend.py](scripts/detect_backend.py) — 解析当前可用的搜索/网页/LinkedIn 后端
 - [scripts/install.sh](scripts/install.sh) — 部署到多个宿主（symlink + 自检）

@@ -16,7 +16,7 @@
 
 ## 与配置的联动
 
-`config/leads.yaml` 的 `verification` 段覆盖本文件规则，冲突时以配置为准：
+工作目录 `leads.yaml` 的 `verification` 段覆盖本文件规则，冲突时以配置为准：
 
 - `require_official_source_for_email: true` 时，**只有 high 置信度的邮箱可用于主名单候选**；medium/low 邮箱的候选最高只能进备选池，输出中注明原因。
 - `min_cross_check_sources`：判定 medium 置信度所需的独立来源数下限（默认 2）。

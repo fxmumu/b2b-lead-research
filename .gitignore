@@ -1,6 +1,7 @@
-# User-maintained configuration: contains company identity, ICP and market strategy.
-# Keep local; the repo ships only the template.
+# User-maintained configuration template (real leads.yaml lives in task working directories).
 config/leads.yaml
+# In case someone runs tasks inside a clone of this repo, ignore the per-task config too.
+/leads.yaml
 
 # Python bytecode
 __pycache__/
