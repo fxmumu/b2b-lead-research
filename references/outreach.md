@@ -24,11 +24,11 @@ Would you be open to a short intro call?
 Best,
 {{your_name}} — {{your_company}} — {{your_email}}
 
-## 分类型差异
+## 分类型差异（按 segment 标准键名，见 segmentation.md 术语表）
 
-- EPC/安装商：强调项目供货、交期、标准合规
-- 分销商：强调 MOQ、OEM/ODM、稳定供货
-- 开发商：先问其 EPC 或采购团队，不强推
+- `epc` / `installer`：强调项目供货、交期、标准合规
+- `distributor` / `importer`：强调 MOQ、OEM/ODM、稳定供货
+- `developer_owner`：先问其 EPC 或采购团队，不强推
 
 ## 跟进
 

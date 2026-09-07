@@ -10,12 +10,12 @@ company:
   name_zh: ""                      # 公司中文名
   name_en: ""                      # 公司英文名
   website: ""                      # 官网 URL
-  contact_email: ""                # 对外联系邮箱
+  contact_email: ""                # 对外联系邮箱（开发信署名用）
   contact_phone: ""                # 对外联系电话
-  address: ""                      # 地址
-  product_or_service: ""           # 一句话说明卖什么
+  address: ""                      # 公司地址
+  product_or_service: ""           # 一句话说明卖什么，例："光伏支架系统及紧固件"
   key_differentiators:             # 2-4 条，写具体事实（产能、标准、认证），开发信会挑选引用
-    - ""
+    - ""                           # 例："年产能 12000 吨，通过 EN 1090 认证"
 
 supply:
   annual_capacity: ""              # 如 "12000+ 吨/年"
@@ -25,40 +25,56 @@ supply:
   oem_odm: true
 
 icp:
-  customer_types: []               # 目标客户类型，如 EPC / 安装商 / 分销商 / 开发商
-  type_weights: {}                 # 各类型权重 1-5，如 {工商业 EPC: 5, 分销商: 4}
+  # 目标客户类型。取值必须用 segmentation.md 术语表中的标准键名（英文小写）：
+  #   end_user        最终用户自采（终端用户、工厂直采）
+  #   epc             EPC/承包商（contractor、总包）
+  #   installer       安装商（安装公司）
+  #   distributor     分销商（经销商、wholesaler）
+  #   importer        进口商（进口贸易商，出口业务核心类型）
+  #   trading_company 贸易商（trading company、代理商）
+  #   oem_buyer       集成商/OEM（品牌商、integrator）
+  #   developer_owner 开发商/业主（developer、asset owner）
+  # 一家公司常兼具多角色，agent 会按主导角色归类打分，次要角色写入 match_reason。
+  customer_types: []               # 例：[epc, installer, distributor, importer]
+  type_weights: {}                 # 各类型权重 1-5，键用上表标准键名
+                                   # 例：{epc: 5, installer: 4, importer: 3}
+                                   # 未列出的类型视为不属于 ICP（fit = 0）
   min_company_employees: 50        # 最低员工数门槛（对小市场可调低）
   min_annual_revenue_usd: 5000000
   ideal_annual_procurement_usd: [100000, 2000000]  # 理想年采购额区间
   min_recent_projects: 3           # 近 24 个月最少项目/新闻数
 
 market:
-  target_regions: []               # 目标国家/地区
-  region_weights: {}               # 地区权重（乘到总分），如 {沙特: 3}
-  exclude_keywords: []             # 排除关键词，如 [逆变器, 融资机构]
+  target_regions: []               # 目标国家/地区，例：[沙特, 阿联酋] 或 [Saudi Arabia, UAE]
+  region_weights: {}               # 地区权重（乘到总分），键须与 target_regions 一致
+                                   # 例：{沙特: 3}；不在其中的地区权重按 1 计
+  exclude_keywords: []             # 排除关键词：公司名/描述含这些词的候选剔除
+                                   # 例：[逆变器, 融资机构, inverter]
   top_n: 10                        # 主名单数量
-  backup_n: 20                     # 备选池数量
+  backup_n: 20                     # 备选池数量（不含主名单）
 
 scoring:
-  weights:                         # 四项权重，总和应为 1
-    fit: 0.35
-    volume: 0.30
-    activity: 0.20
-    accessibility: 0.15
-  volume_tiers_annual_usd:         # 年采购额分档（A 最高）
-    A: 2000000
-    B: 500000
-    C: 100000
-    D: 0
-  min_score: 0.55                  # 低于此分进备选池
+  weights:                         # 四项权重，总和必须为 1；公式见 segmentation.md
+    fit: 0.35                      # 客户类型与 ICP 的匹配度
+    volume: 0.30                   # 估算年采购额分档（A=1.0 … D=0.25）
+    activity: 0.20                 # 近 24 个月项目/新闻活跃度
+    accessibility: 0.15            # 联系方式 + 决策人可触达性
+  volume_tiers_annual_usd:         # 年采购额分档阈值（A 最高），单位 USD
+    A: 2000000                     # 年采购额 ≥ 200 万
+    B: 500000                      # 50 万 – 200 万
+    C: 100000                      # 10 万 – 50 万
+    D: 0                           # < 10 万
+  min_score: 0.55                  # 总分低于此值进备选池，不进主名单
 
 output:
-  contact_preference: ["email", "phone", "linkedin"]
-  include_outreach_drafts: true
-  outreach_language: "en"
-  format: "markdown_table"
+  contact_preference: ["email", "phone", "linkedin"]  # 名单中优先展示的联系方式，按序排列
+  include_outreach_drafts: true    # true 时为主名单每家生成一封开发信草稿（只起草，不发送）
+  outreach_language: "en"          # 开发信语言，例：en / ar / zh
+  format: "markdown_table"         # 最终交付格式
 
 verification:
   require_official_source_for_email: true   # true 时主名单邮箱必须 high 置信度
-  min_cross_check_sources: 2                # medium 置信度所需独立来源数
-  never_guess_email: true
+                                            # （官方/政府来源直接给出）；
+                                            # medium/low 邮箱的候选最高进备选池
+  min_cross_check_sources: 2                # 判定 medium 置信度所需独立来源数
+  never_guess_email: true                   # true 时绝不按姓名/域名格式猜测邮箱，无例外
