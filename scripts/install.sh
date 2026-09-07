@@ -1,6 +1,18 @@
 #!/usr/bin/env bash
-# Deploy b2b-lead-research to multiple agent hosts via symlinks.
-# Single source of truth: this directory (recommended: keep it in git).
+# Deploy b2b-lead-research to agent hosts via symlinks.
+#
+# WHAT THIS IS
+#   A skill is installed by placing a directory named `b2b-lead-research`
+#   (containing SKILL.md) inside the host's skills directory. That's all.
+#   This script automates ONE variant of that: keep the git repo wherever
+#   you like and link it into each host, so `git pull` upgrades every host
+#   at once. It is OPTIONAL — cloning straight into the skills directory
+#   works without this script (see README, 方式二).
+#
+# WHAT IT DOES
+#   - Creates symlinks: ~/.claude/skills/b2b-lead-research -> this repo
+#     (and ~/.codex/skills/... for codex)
+#   - Refuses to overwrite unrelated content, verifies links with --verify
 #
 # Usage:
 #   scripts/install.sh            # deploy to default hosts (claude-code, codex)

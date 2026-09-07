@@ -18,22 +18,32 @@ Agent Skill：研究、筛选、背调 B2B 潜在客户，产出带来源、打�
 
 ## 安装
 
-skill ID = 目录名，必须是 `b2b-lead-research`。三种方式按推荐顺序：
+**装 skill 的本质**：把一个名为 `b2b-lead-research`（内含 `SKILL.md`）的目录放进宿主的 skills 目录（`~/.claude/skills/`、`~/.codex/skills/`），仅此而已。目录名就是 skill ID，名字不对宿主就识别不了。
 
-### 方式一：git clone + symlink（推荐）
+**`scripts/install.sh` 不是必须的**。它只服务下面方式一：为 git 仓库建 symlink，让一次 `git pull` 同时升级所有宿主。不想用脚本就直接用方式二。
+
+### 方式一：git clone + symlink（推荐，需要跑 install.sh）
 
 单一源在 git 仓库，`git pull` 即升级，两个宿主共享同一份：
 
 ```bash
 git clone https://github.com/fxmumu/b2b-lead-research.git ~/github.com/fxmumu/b2b-lead-research
 ~/github.com/fxmumu/b2b-lead-research/scripts/install.sh
+```
 
-# 常用选项
+脚本行为：
+- 在 `~/.claude/skills/`、`~/.codex/skills/` 下各建一个 symlink 指向仓库本体
+- 目标位置已有其他内容时拒绝覆盖（`[conflict]`），目录名不对（如 ZIP 解压的 `-master` 后缀）时拒绝执行并给出指引
+- 退出码：0 成功；1 有冲突/缺失；2 用法错误
+
+常用选项：
+
+```bash
 scripts/install.sh --verify            # 只校验不修改
 scripts/install.sh --hosts claude-code # 指定宿主（已知：claude-code, codex）
 ```
 
-### 方式二：直接 clone 进宿主 skills 目录
+### 方式二：直接 clone 进宿主 skills 目录（不跑脚本）
 
 不想保留独立仓库时最简单，但升级要在每个宿主里分别 pull：
 
@@ -46,7 +56,7 @@ git clone https://github.com/fxmumu/b2b-lead-research.git ~/.claude/skills/b2b-l
 
 ### 方式三：GitHub ZIP 下载（应急）
 
-无 git 环境时的兜底。ZIP 解压目录名带 `-master` 后缀，**必须先改名**：
+无 git 环境时的兜底，也不需要 install.sh。ZIP 解压目录名带 `-master` 后缀，**必须先改名**：
 
 ```bash
 unzip b2b-lead-research-master.zip          # 得到 b2b-lead-research-master/
