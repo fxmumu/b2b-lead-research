@@ -1,9 +1,9 @@
 ---
 name: b2b-lead-research
-version: "1.2.0"
+version: "1.3.1"
 display_name: B2B 外贸客户开发
 display_name_en: B2B Export Lead Research
-description: Research, qualify, and verify B2B potential customers/leads for a product or service, producing a prioritized, sourced contact list with due-diligence notes and outreach drafts. Use when the user asks to 找客户、获客、开发客户、找潜在客户、客户名单、找经销商/采购商/EPC/买家，or "find leads / find potential customers / lead generation / customer acquisition / find buyers". Reads a user-maintained config at leads.yaml in the working directory.
+description: Research, qualify, and verify B2B potential customers/leads for a product or service, producing a prioritized, sourced contact list with due-diligence notes and outreach drafts. Use when the user asks to 找客户、获客、外贸获客、开发客户、找潜在客户、客户名单、客户背调、开发信、找经销商/采购商/EPC/买家，or "find leads / lead list / find potential customers / lead generation / customer acquisition / find buyers". Reads a user-maintained config at leads.yaml in the working directory.
 description_zh: 供方找需方：为外贸企业研究、筛选并背调潜在买家，产出可溯源、打分排序的客户名单与开发信草稿。
 description_en: "For export businesses: research, qualify, and vet potential buyers on the demand side, excluding same-category competitors, and deliver a sourced, scored lead list with outreach drafts."
 ---
@@ -12,159 +12,158 @@ description_en: "For export businesses: research, qualify, and vet potential buy
 
 ## 核心概念：供方找需方
 
-本 skill 站在**供给侧（供方）**视角运行：使用配置的用户是供方，任务是找到**需求侧（需方）**——真正采购其产品的公司。所有判断以此为第一原则：
-
-- **需方**：因自身业务而产生对该产品的采购需求的公司（自用、项目采购、渠道分销、进口转售、OEM 嵌入）
-- **供给侧（非客户）**：同样在卖该品类的公司——同行生产商/贸易商、B2B 平台卖家页、行业聚合目录本身。他们不是买家，混进名单会浪费背调与触达
-- 边界情形：下游分销商虽也「卖货」，但卖的是**从别人处采购的货**，处于需求侧，是要找的客户；判据看采购关系而非「是否销售」
+本 skill 站在**供给侧（供方）**视角：用户是卖方，任务是找到**需方**（真正采购该产品的公司）。判定细则与信号表见 [references/segmentation.md](references/segmentation.md) §1.5；边界情形（下游分销商虽也卖货，但是采购后再卖 → 属需方）以采购关系为准，不以「是否销售」为准。
 
 ## 执行顺序
-
-按以下步骤执行：
 
 0. 配置与目标确认
 1. 拆解搜索计划
 2. 线索发现（含去重）
-3. 资格筛选、体量估算与可触达性过滤
+3. 资格筛选与可触达性过滤（不打分）
 4. 潜在客户背调（硬闸门）
 5. 联系方式获取与验证
-6. 打分排序
+6. 打分排序与名单定稿
 7. 汇总交付
 
 ## Step 0: 配置与目标确认
 
-先读工作目录下的 `leads.yaml`（相对于当前会话工作目录，不在 skill 目录内）。它定义产品、供货能力、目标客户画像（ICP）、目标市场、打分权重和输出参数。
+先读工作目录下的 `leads.yaml`（相对当前会话工作目录，不在 skill 目录内）。它定义产品、供货能力、ICP、目标市场、打分权重和输出参数。
 
-- 文件不存在时：把 **skill 目录**下的 `config/leads.yaml.example` 复制为工作目录的 `leads.yaml`，然后向用户索要关键字段填写，不要臆造。skill 目录即本 skill 的安装位置（symlink 指向的仓库，如 `~/.claude/skills/b2b-lead-research`）。注意区分两类路径：本 skill 文档里的 `config/`、`references/`、`scripts/` 等相对 skill 目录解析；`leads.yaml` 与 `lead-research/` 相对当前工作目录解析。
+- 文件不存在时：把 **skill 安装目录**下的 `config/leads.yaml.example` 复制为工作目录的 `leads.yaml`，然后向用户索要关键字段，不要臆造。skill 安装目录即本 skill 所在文件夹（含 `SKILL.md` 的那一层）。`config/`、`references/`、`scripts/` 相对 skill 安装目录；`leads.yaml` 与 `lead-research/` 相对工作目录。
 - 文件存在但关键字段为空时：先向用户索要，不要臆造。
 
-**开跑前必须向用户列出本次任务的情况与目标，逐项确认后再进入 Step 1**，内容包括：
+**开跑前必须向用户确认**（逐项列出后等确认再进 Step 1）：
 
-1. 配置摘要：产品/服务、目标客户类型、目标市场与地区权重、主名单/备选池数量
-2. 供需口径：向用户复述「供方是谁（卖什么）、因此要找的需方是谁（谁买）」，并给出供给侧的判定口径——公司简介/产品页与 `company.product_or_service` 同品类、同环节的公司属供给侧，不是客户；请用户补充已知的同行名单或排除关键词（写入 `market.exclude_keywords`）
-3. 本次搜索计划：将覆盖的来源类别（目录、展会、政府备案、项目新闻反查等）与查询语言
-4. 已知约束：`exclude_keywords`、可触达性过滤、`min_score` 门槛
-5. 交付物：主名单 + 备选池、是否生成开发信草稿
+1. 配置摘要：产品/服务、目标客户类型、目标市场与地区权重、`top_n` / `backup_n`
+2. 供需口径：复述「供方卖什么 → 要找谁买」；请用户补充已知同行或排除词（写入 `market.exclude_keywords`）
+3. 搜索计划：来源类别与查询语言
+4. 约束：`exclude_keywords`、可触达性过滤、`min_score`
+5. 交付物：主名单 + 备选池 + 排除清单；是否生成开发信草稿
 
-用户确认后，把该摘要连同配置版本（可注明 `leads.yaml` 的修改时间）一并记入 `lead-research/brief.md`，作为断点续跑时的目标基线。用户在确认环节修改了任何字段，先落盘到 `leads.yaml` 再继续。
+确认后写入 `lead-research/brief.md`（含 `leads.yaml` 修改时间作基线）。用户改了字段先落盘 `leads.yaml` 再继续。
 
 ## 中间产物与断点续跑
 
-全量任务涉及数十家候选、上百次页面抓取，单次会话无法完整承载，必须增量落盘：
+全量任务跨会话，必须增量落盘。工作目录下维护：
 
-- 在用户工作目录下创建 `lead-research/` 目录，维护四个文件：
-  - `brief.md` — Step 0 确认过的任务简报（配置摘要 + 搜索计划 + 交付物）
-  - `candidates.jsonl` — 每家候选一条 JSON（schema 见 assets/lead-schema.json，可先留空未验证字段）
-  - `scores.jsonl` — {company, fit, volume, activity, accessibility, region_weight, score, risk_level}
-  - `outreach/` — 开发信草稿，一客户一文件
-- 每完成一家候选的一个阶段（发现/筛选/背调/验证/打分），立即把该阶段结果追加写入，不要攒到最后批量写。
-- 恢复任务时：先读这四个文件，跳过已有完整记录的候选；字段残缺的候选视为未完成，只补缺失阶段。配置以工作目录 `leads.yaml` 为准，若它相对 `brief.md` 记录的基线已变更，向用户说明差异并确认是否按新配置续跑。
-- 汇报进度时以落盘记录为准，不以本次会话记忆为准。
+- `lead-research/brief.md` — Step 0 确认过的任务简报
+- `lead-research/candidates.jsonl` — **唯一真相源**；每家一条 JSON（schema 见 [assets/lead-schema.json](assets/lead-schema.json)）
+- `lead-research/outreach/` — 开发信草稿（可选）
+
+每完成一家的一个阶段，立即更新该条记录的 `stage` / `disposition` 及相关字段，不要攒到最后。
+
+**阶段与去向**（字段权威定义在 schema）：
+
+| `stage` | 含义 | 完成后应具备 |
+|---|---|---|
+| `discovered` | 已发现 | company, country, sources；可选 website、初步 segment |
+| `screened` | 已筛选 | segment（需方）、segment_evidence、体量估算；或已标排除类 disposition |
+| `diligenced` | 已背调 | risk_level、due_diligence_* |
+| `verified` | 已验联系方式 | contacts（可为空数组并注明无公开邮箱） |
+| `scored` | 已打分定稿 | score、score_breakdown；disposition ∈ {main, backup} |
+
+| `disposition` | 含义 | 是否占 `backup_n` |
+|---|---|---|
+| `pending` | 仍在流水线 | — |
+| `main` | 主名单 | — |
+| `backup` | 有分次优备选 | 是 |
+| `competitor` | 供给侧/同行 | 否（进排除清单） |
+| `unreachable` | 无可触达通道 | 否（进排除清单） |
+| `excluded` | 高风险、制裁、ICP 不符、供需待确认等 | 否（进排除清单） |
+
+恢复任务：读 `candidates.jsonl`，按 `stage` 只补下一阶段；`disposition` 已为排除类的不再推进。配置以工作目录 `leads.yaml` 为准；相对 `brief.md` 基线有变更时向用户确认。进度以落盘为准。
+
+每写完一批候选后运行：
+
+```bash
+python3 <skill安装目录>/scripts/validate_candidates.py lead-research/candidates.jsonl
+# Windows 若无 python3：python <skill安装目录>/scripts/validate_candidates.py ...
+```
+
+校验失败则先修记录再继续。
 
 ## Step 1: 拆解搜索计划
 
-先解析当前执行环境的能力后端。在任意工作目录下运行（脚本路径相对 skill 目录）：
-
 ```bash
-python3 <skill目录>/scripts/detect_backend.py
+python3 <skill安装目录>/scripts/detect_backend.py
+# Windows 若无 python3：改用 python
 ```
 
-- 你如果清楚自己所在的宿主（如 `claude-code`、`codex`），显式传 `--host <宿主名>`，这是最可靠的识别方式；不确定就省略，脚本会从环境标记探测。
-- 脚本返回统一的 capability map（`search` / `web_read` / `linkedin` 三项，各含 backend、调用方式、注意事项）。**之后严格按 capability map 行动，不假设工具名**——不同宿主的工具不同，映射关系全部由 `capabilities/` 清单解析，本 skill 正文不出现宿主专属工具名。
-- 只有需要检查 Agent Reach 通道状态时才加 `--doctor`；需要真实校验 LinkedIn 登录态时加 `--check-linkedin`。
-- 输出里 `backend: none` 的能力按其 `note` 的降级路径执行。
+- 清楚宿主时显式传 `--host`（如 `claude-code`、`codex`、`cursor`）；不确定可省略。
+- 严格按返回的 capability map 行动，不假设工具名。`backend: none` 按其 `note` 降级。
+- 仅在需要时加 `--doctor` / `--check-linkedin`。
 
-根据 `company.product_or_service`、`icp.customer_types` 和 `market.target_regions` 生成并行查询组合。至少覆盖：
-
-- 行业目录与展商名单
-- 政府/机构备案的承包商或供应商名单
-- 项目新闻反查（中标、开工、招标 -> 背后的 EPC/买家）
-- 公司官网与 LinkedIn
-
-英文查询为主；对非英语市场按需补充本地语言关键词。详细来源与查询模板见 [references/sources.md](references/sources.md)。
-
-**查询组合必须偏向需求侧**：搜索意图是「谁在买/谁在用/谁在装机/谁在分销」，不是「谁在生产/谁在卖」。产品名裸搜（如 `solar mounting Saudi Arabia`）会命中大量供给侧官网与 B2B 卖家页，应与 buyer-side 词根组合使用（见 sources.md 的需求端/供给端词根表），并避免把同行聚合目录本身当作候选来源。
+按产品、ICP、目标市场生成并行查询；至少覆盖行业目录/展商、政府备案、项目新闻反查、官网与 LinkedIn。查询必须偏向需求侧（谁在买/用/装机/分销），与 buyer-side 词根组合，见 [references/sources.md](references/sources.md)。
 
 ## Step 2: 线索发现
 
-并行执行搜索，为每个候选记录：
+并行搜索，写入候选（`stage: discovered`，`disposition: pending`）：公司名、国家、官网、初步客户类型、来源 URL。
 
-- 公司名、国家、官网
-- 初步判断的客户类型
-- 来源 URL
+**去重**：域名为主键（去 `www.`、小写）；无官网用公司名小写去空格。已存在则只合并 `sources`，不新建。
 
-**去重**：多路搜索必然命中同一公司。以官网域名为主键（去 `www.`、统一小写；无官网的用公司名小写去空格做次级键），发现阶段先查 `candidates.jsonl` 中是否已有该键，命中则只合并来源 URL，不新建记录。
+候选池至少 `market.backup_n` 的 2–3 倍。LinkedIn 人员搜索按 capability map 的 `linkedin` 项执行。
 
-不在本阶段深挖，先收集足够的候选池（至少 `market.backup_n` 的 2-3 倍）。
+## Step 3: 资格筛选与可触达性过滤（不打分）
 
-若任务明确要求 LinkedIn 人员/职位搜索，按 capability map 的 `linkedin` 项执行；能用 LinkedIn MCP（会话已验证）就记录真实 profile URL 和职位，不能用就回退到 `search` 与公开 LinkedIn 搜索入口。
+用 [references/segmentation.md](references/segmentation.md)：
 
-## Step 3: 资格筛选、体量估算与可触达性过滤
+1. **供给侧硬闸门**：同品类同环节 → `disposition: competitor`，填 `exclusion_reason` 与 `segment_evidence`，`stage: screened`，**不打分、不占 backup_n**
+2. 归类 `segment`（标准键名）、对照 ICP；不符 → `disposition: excluded`
+3. 估算年采购额（写入 `estimated_annual_procurement_usd`）
+4. **廉价可触达过滤**：至少有一个潜在通道（contact 页/表单、LinkedIn 公司页、公开 info 邮箱）；皆无 → `disposition: unreachable`，不做 Step 4
 
-用 [references/segmentation.md](references/segmentation.md) 对每个候选：
-
-- 归类客户类型
-- **供给侧检测（硬闸门，先于一切打分）**：按 segmentation.md 的供需判定规则检查候选是否与用户同品类、同环节。判定为供给侧的候选移入备选池标 `competitor`（或直接删除），不参与打分——供方不是需方，混进名单会浪费所有后续背调与触达
-- 用员工数、营收、项目规模/数量、分销网络等公开代理指标估算年采购额
-- 对照 `icp` 过滤不符合最低要求的候选
-- 计算四项得分（公式见 segmentation.md，不可自行变通）
-
-**可触达性前置过滤（廉价，先于背调）**：快速确认候选至少存在一个潜在联系通道——官网有 contact 页/表单、LinkedIn 公司页、或公开 info 邮箱。三者皆无的候选直接标 `unreachable` 移入备选池，不做 Step 4 背调（背调成本高，不要花在不可触达的线索上）。
+通过者：`stage: screened`，`disposition: pending`。**本步不算四项得分**（`accessibility` 公式依赖 Step 5 的验证结果）。
 
 ## Step 4: 潜在客户背调（硬闸门）
 
-用 [references/due-diligence.md](references/due-diligence.md) 检查每家的：
+用 [references/due-diligence.md](references/due-diligence.md)。输出 `risk_level`、`due_diligence_summary`、`due_diligence_checks`。
 
-- 公司是否真实存在、是否仍在经营
-- 业务是否真的采购目标产品
-- 公开可查的诉讼、破产、制裁、负面信号
-- 能否识别到采购/商务决策人
-
-输出 `risk_level`（low/medium/high）和 `due_diligence_summary`。**high 风险的候选一律不进入主名单**，移入备选池并标注「高风险，不建议优先触达」；制裁名单命中或查无实据的直接删除，不保留。
+- 制裁名单命中，或真实性/经营状态查无实据且无法确认存在 → `disposition: excluded`（保留 jsonl 审计，不进交付主表/备选）
+- 其他 `high` → `disposition: excluded`，`exclusion_reason` 注明「高风险，不建议触达」
+- `medium` / `low` → `stage: diligenced`，继续
 
 ## Step 5: 联系方式获取与验证
 
-用 [references/verification.md](references/verification.md) 获取并验证联系方式：
+用 [references/verification.md](references/verification.md)。邮箱优先；每条附 `source` + `confidence`；无公开邮箱写明，绝不猜测。完成后 `stage: verified`。
 
-- 邮箱优先，其次电话、LinkedIn、官网表单
-- 每个联系方式必须附 `source` 和 `confidence`
-- 找不到公开邮箱就写「无公开邮箱」，绝不根据姓名或域名格式猜测
+## Step 6: 打分排序与名单定稿
 
-## Step 6: 打分排序
+仅对 `disposition: pending` 且 `stage: verified`（或已 diligenced+verified）的候选，按 `scoring.weights` 与 [references/segmentation.md](references/segmentation.md) 公式计算总分，写入 `score` + `score_breakdown`（必须可复算）。
 
-按 `scoring.weights` 计算加权总分（公式见 segmentation.md），再按 `risk_level` 调整：high 风险移入备选池。得到主名单（`market.top_n`）和备选池（`market.backup_n`）。
+**交付语义**：
 
-**打分留痕**：每家候选按 lead-schema 的 `score_breakdown` 记录四项得分、region_weight 及各自推导依据（用了什么代理指标、套的哪条公式）。总分必须能从 breakdown 复算出来，复算不出的打分视为无效。
+- **主名单** (`disposition: main`)：`risk_level != high`、达到 `min_score`、总分最高的前 `top_n`；不足则如实少出，不凑数
+- **备选池** (`disposition: backup`)：主名单之外、**有完整得分**的次高 `backup_n` 家（含未达 `min_score` 的）
+- **排除清单**：所有 `competitor` / `unreachable` / `excluded`，单独汇报，**不计入 `backup_n`**
 
-**主名单/备选池语义**：主名单 = 总分最高且 `risk_level != high`、`min_score` 达标的前 `top_n` 家；备选池 = 主名单之外得分次高的 `backup_n` 家，无论其分数是否达到 `min_score`——包括被可触达性过滤或高风险规则移下来的候选。若达标候选不足 `top_n`，如实输出较少的主名单，不放宽标准凑数。
+全部定稿后将入选者 `stage` 设为 `scored`。
 
 ## Step 7: 汇总交付
 
-按 [assets/lead-schema.json](assets/lead-schema.json) 输出字段，交付主表 + 备选池。若 `output.include_outreach_drafts: true`，用 [references/outreach.md](references/outreach.md) 为主名单客户生成开发信草稿，写入 `lead-research/outreach/`。
+按 schema 字段交付三块：主名单、备选池、排除清单。`output.include_outreach_drafts: true` 时用 [references/outreach.md](references/outreach.md) 为主名单写草稿到 `lead-research/outreach/`。
 
-**每个结论都要有论据支撑**：交付的不只是名单，还是一份可复核的论证。四类结论分别留痕——供需判定（`segment_evidence`）、背调（`due_diligence_checks`）、打分（`score_breakdown` + 估算 `basis`）、联系方式（`contacts.source` + `confidence`）。主表中的总结论（如「建议优先触达」）须能从这些留痕推导出来；汇报时论据跟随结论一起呈现，不以「我们判断」一笔带过。
-
-汇报时明确区分已验证信息、低置信度信息和未验证缺口。若本次会话未能跑完全部候选，如实说明已完成的数量与剩余缺口，并告知用户可继续时从落盘记录恢复。
+四类结论留痕：供需 (`segment_evidence`)、背调 (`due_diligence_checks`)、打分 (`score_breakdown`)、联系方式 (`contacts.source` + `confidence`)。汇报区分已验证 / 低置信 / 缺口；未跑完则说明进度与可续跑。
 
 ## 铁律
 
 - 绝不编造公司、邮箱、电话或任何事实。
-- 只使用公开来源；每条线索都要能追溯到 URL。
-- **供给侧不进名单**：与用户同品类、同环节的公司不是买家。判定为供给侧的候选不得进入主名单；拿不准的按待定处理并向用户说明，不得靠打分高低混过去。
-- high 风险客户必须标注，不得隐藏。
+- 只使用公开来源；每条线索可追溯到 URL。
+- 供给侧不进主名单/备选池；拿不准标 `excluded`（供需待确认），不得靠打分混过。
+- high 风险必须 `excluded` 并标注，不得隐藏。
 - 遵守 `market.exclude_keywords` 和地区排除项。
-- 本 skill 只负责研究并起草触达内容；未经用户明确同意，不实际发送任何消息。
+- 只研究并起草触达内容；未经用户明确同意不实际发送。
 
 ## 资源
 
-- [capabilities/](capabilities/) — 各宿主能力清单（加新宿主 = 加一个 JSON 文件）
-- [references/segmentation.md](references/segmentation.md) — 客户分类、体量估算、打分公式
-- [references/due-diligence.md](references/due-diligence.md) — 背调清单与风险分级
-- [references/verification.md](references/verification.md) — 联系方式验证与置信度
+- [capabilities/](capabilities/) — 各宿主能力清单
+- [references/segmentation.md](references/segmentation.md) — 分类、供需判定、体量、打分公式
+- [references/due-diligence.md](references/due-diligence.md) — 背调与风险分级
+- [references/verification.md](references/verification.md) — 联系方式验证
 - [references/sources.md](references/sources.md) — 线索来源与查询模板
-- [references/tools.md](references/tools.md) — 能力后端解析与降级链
+- [references/tools.md](references/tools.md) — 能力后端与降级链
 - [references/outreach.md](references/outreach.md) — 开发信模板
 - [assets/lead-schema.json](assets/lead-schema.json) — 输出字段标准
-- [config/leads.yaml.example](config/leads.yaml.example) — 配置模板（复制到工作目录的 leads.yaml 使用）
-- [scripts/detect_backend.py](scripts/detect_backend.py) — 解析当前可用的搜索/网页/LinkedIn 后端
-- [scripts/install.sh](scripts/install.sh) — 部署到多个宿主（symlink + 自检）
+- [config/leads.yaml.example](config/leads.yaml.example) — 配置模板
+- [scripts/detect_backend.py](scripts/detect_backend.py) — 解析搜索/网页/LinkedIn 后端
+- [scripts/validate_candidates.py](scripts/validate_candidates.py) — 校验 candidates.jsonl
+- [scripts/install.sh](scripts/install.sh) — 多宿主部署

@@ -3,10 +3,11 @@
 本 skill 不把任何宿主专属工具名写进文档。执行前先运行 detect_backend.py 得到 capability map，按其输出行动：
 
 ```bash
-python3 scripts/detect_backend.py
+python3 <skill安装目录>/scripts/detect_backend.py
+# Windows 若无 python3：python <skill安装目录>/scripts/detect_backend.py
 ```
 
-宿主差异由 [../capabilities/](../capabilities/) 下的清单文件解析：每个宿主一个 JSON（原生工具名、调用注意事项、权限提示），`_schema.json` 约束字段。加新宿主 = 加一个清单文件，不改代码与文档。
+宿主差异由 [../capabilities/](../capabilities/) 下的清单文件解析：每个宿主一个 JSON（原生工具名、调用注意事项、权限提示），`_schema.json` 约束字段。加新宿主 = 加一个清单文件，不改代码与文档。路径相对 skill 安装目录；从任意工作目录调用时用绝对路径或先定位该目录。
 
 ## 选择顺序（detect_backend.py 的解析逻辑）
 
@@ -18,6 +19,7 @@ python3 scripts/detect_backend.py
 2. **原生能力缺失时，检测 CLI 层增强**（与宿主无关，所有 CLI 通用）
    - Agent Reach：`mcporter call exa.web_search_exa query="{query}" numResults=5`（Exa 语义搜索，需通道已验证）
    - 通用网页阅读：`curl -s "https://r.jina.ai/{url}"`
+     - 注意：目标 URL 会发给第三方（Jina）拉取可读文本；本 skill 只应用在公开来源。免费档有速率限制，失败时可能静默返回空/错误页——失败则改用原生 `web_read` 或直接 `curl` 目标站，不要把空结果当「页面无内容」。
    - LinkedIn MCP（仅当 `--check-linkedin` 确认会话有效）：
      ```bash
      mcporter call linkedin.search_people keywords="{query}" location="{location}"

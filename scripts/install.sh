@@ -9,15 +9,19 @@
 #   at once. It is OPTIONAL — cloning straight into the skills directory
 #   works without this script (see README, 方式二).
 #
+#   Windows: do NOT use this script. Git Bash often implements `ln -s` as a
+#   file copy, so deploy looks successful but `git pull` on the source repo
+#   will not update the skills directory. Use README 方式二 instead.
+#
 # WHAT IT DOES
 #   - Creates symlinks: ~/.claude/skills/b2b-lead-research -> this repo
-#     (and ~/.codex/skills/... for codex)
+#     (also ~/.codex/skills and ~/.cursor/skills for those hosts)
 #   - Refuses to overwrite unrelated content, verifies links with --verify
 #
 # Usage:
-#   scripts/install.sh            # deploy to default hosts (claude-code, codex)
+#   scripts/install.sh            # deploy to default hosts (claude-code, codex, cursor)
 #   scripts/install.sh --verify   # check existing links without changing anything
-#   scripts/install.sh --hosts claude-code,codex,myagent
+#   scripts/install.sh --hosts claude-code,codex,cursor
 #
 # Requires the directory name to be exactly `b2b-lead-research` (it becomes
 # the skill ID in every host). If you downloaded a GitHub ZIP, the extracted
@@ -36,12 +40,13 @@ if [[ "$SKILL_NAME" != "b2b-lead-research" ]]; then
 fi
 
 # Portable host registry: avoids `declare -A` (bash 4+); macOS ships bash 3.2.
-KNOWN_HOSTS="claude-code codex"
+KNOWN_HOSTS="claude-code codex cursor"
 
 host_dir() {
   case "$1" in
     claude-code) echo "$HOME/.claude/skills" ;;
     codex) echo "$HOME/.codex/skills" ;;
+    cursor) echo "$HOME/.cursor/skills" ;;
     *) return 1 ;;
   esac
 }
@@ -110,7 +115,7 @@ main() {
   if [[ -n "$hosts_arg" ]]; then
     IFS=',' read -ra hosts <<< "$hosts_arg"
   else
-    hosts=(claude-code codex)
+    hosts=(claude-code codex cursor)
   fi
 
   echo "source: $SKILL_DIR"

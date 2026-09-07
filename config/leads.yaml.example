@@ -46,8 +46,9 @@ icp:
 
 market:
   target_regions: []               # 目标国家/地区，例：[沙特, 阿联酋] 或 [Saudi Arabia, UAE]
-  region_weights: {}               # 地区权重（乘到总分），键须与 target_regions 一致
-                                   # 例：{沙特: 3}；不在其中的地区权重按 1 计
+  region_weights: {}               # 地区偏好乘数（乘到总分），键须与 target_regions 一致
+                                   # 建议 1.0–1.5（一般 ≤2）；例：{沙特: 1.2}
+                                   # 不在其中的地区按 1 计。过大（如 3）会击穿 min_score
   exclude_keywords: []             # 排除关键词：公司名/描述含这些词的候选剔除。
                                    # 建议写入已知同行名与供给端词，例：
                                    # [逆变器, 融资机构, inverter, <你的同行公司名>]
@@ -55,7 +56,7 @@ market:
   backup_n: 20                     # 备选池数量（不含主名单）
 
 scoring:
-  weights:                         # 四项权重，总和必须为 1；公式见 segmentation.md
+  weights:                         # 四项权重，总和应为 1；若≠1 打分前先归一化（见 segmentation.md）
     fit: 0.35                      # 客户类型与 ICP 的匹配度
     volume: 0.30                   # 估算年采购额分档（A=1.0 … D=0.25）
     activity: 0.20                 # 近 24 个月项目/新闻活跃度

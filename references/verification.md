@@ -18,19 +18,21 @@
 
 工作目录 `leads.yaml` 的 `verification` 段覆盖本文件规则，冲突时以配置为准：
 
-- `require_official_source_for_email: true` 时，**只有 high 置信度的邮箱可用于主名单候选**；medium/low 邮箱的候选最高只能进备选池，输出中注明原因。
+- `require_official_source_for_email: true` 时，**只有 high 置信度的邮箱可用于主名单**（`disposition: main`）；medium/low 邮箱的候选最高进有分备选池（`disposition: backup`），输出中注明原因。
 - `min_cross_check_sources`：判定 medium 置信度所需的独立来源数下限（默认 2）。
 - `never_guess_email: true` 时严格执行下方"绝不猜测"规则，无例外。
 
 ## 邮箱域名有效性检查
 
-拿到候选邮箱后，做一次零成本验证：
+拿到候选邮箱后，做一次零成本验证（有 `dig` 用前者；Windows 通常没有 `dig`，用后者）：
 
 ```bash
 dig +short MX <邮箱@后的域名>
+# Windows / 无 dig 时：
+nslookup -type=MX <邮箱@后的域名>
 ```
 
-无 MX 记录（或 NXDOMAIN）的域名说明邮箱不可能收信——保留线索但联系方式标 `confidence: low` 并注明 "domain has no MX record"。这只是域名有效性检查，不是邮箱存在性验证。
+无 MX 记录（或 NXDOMAIN）的域名说明邮箱不可能收信——保留线索但联系方式标 `confidence: low` 并注明 "domain has no MX record"。这只是域名有效性检查，不是邮箱存在性验证。`dig` / `nslookup` 都不可用时跳过本检查，不因此降低已有来源的置信度。
 
 ## 规则
 

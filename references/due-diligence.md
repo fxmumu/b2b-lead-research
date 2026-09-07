@@ -34,8 +34,9 @@
 
 ## 处理规则
 
-- high：排除，或单独标注「高风险，不建议优先触达」
-- medium：保留但降权，在输出中说明存疑点
+- 制裁名单命中，或真实性/经营状态完全查无实据、无法确认公司存在 → `disposition: excluded`（保留 jsonl 供审计，不进主名单/备选池）
+- 其他 high → `disposition: excluded`，`exclusion_reason` 注明「高风险，不建议触达」
+- medium：继续流水线，在输出中说明存疑点（总分排序时自然靠后，不另设降权系数）
 - low：正常进入下一轮
 
 每个候选输出 `risk_level` 和 `due_diligence_summary`（2–3 句，说明依据）。

@@ -1,9 +1,10 @@
 {
-  "host": "claude-code",
+  "host": "cursor",
   "detect_env": {
     "env": {
-      "CLAUDECODE": "1"
-    }
+      "CURSOR_AGENT": true
+    },
+    "argv0_contains": ["cursor"]
   },
   "capabilities": {
     "search": {
@@ -14,11 +15,11 @@
     "web_read": {
       "backend": "native",
       "tool": "WebFetch",
-      "note": "Accepts URL + prompt; large pages may be summarized, so for raw HTML, PDFs, or directory listings prefer the shell fallback. WebFetch fails on authenticated pages — fall back to public sources only."
+      "note": "Accepts a URL and returns readable markdown. Large pages may be summarized; for raw HTML, PDFs, or directory listings prefer the shell fallback. Authenticated pages are unavailable — use public sources only."
     },
     "linkedin": {
       "backend": "public_only",
-      "note": "No login-gated LinkedIn access. Use public LinkedIn pages via web_read/shell, or the Agent Reach LinkedIn MCP when its session is verified. Never guess profile URLs."
+      "note": "No login-gated LinkedIn access by default. Use public LinkedIn pages via web_read/shell, or a LinkedIn MCP when its session is verified. Never guess profile URLs."
     }
   },
   "permissions_hints": [

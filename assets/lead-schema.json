@@ -3,9 +3,40 @@
   "title": "B2B Lead",
   "type": "object",
   "properties": {
-    "company": { "type": "string" },
-    "country": { "type": "string" },
-    "segment": { "type": "string" },
+    "company": { "type": "string", "minLength": 1 },
+    "country": { "type": "string", "minLength": 1 },
+    "website": {
+      "type": "string",
+      "description": "官网 URL；去重主键优先用其域名"
+    },
+    "stage": {
+      "type": "string",
+      "enum": ["discovered", "screened", "diligenced", "verified", "scored"],
+      "description": "流水线进度。续跑时按此字段跳过已完成阶段，只补下一阶段"
+    },
+    "disposition": {
+      "type": "string",
+      "enum": ["pending", "main", "backup", "competitor", "unreachable", "excluded"],
+      "description": "去向。pending=仍在流水线；main/backup=交付名单（仅 scored 且参与打分）；其余为排除类，不占 backup_n 名额"
+    },
+    "exclusion_reason": {
+      "type": "string",
+      "description": "disposition 为 competitor / unreachable / excluded 时必填：一句话说明原因"
+    },
+    "segment": {
+      "type": "string",
+      "enum": [
+        "end_user",
+        "epc",
+        "installer",
+        "distributor",
+        "importer",
+        "trading_company",
+        "oem_buyer",
+        "developer_owner"
+      ],
+      "description": "客户类型标准键名（见 segmentation.md）；screened 及之后必填（competitor 除外可省略）"
+    },
     "match_reason": { "type": "string" },
     "segment_evidence": {
       "type": "array",
@@ -60,6 +91,7 @@
     },
     "estimated_annual_procurement_usd": {
       "type": "object",
+      "description": "年采购额估算。无法估算时省略本字段（不要填假数字）；打分时用 score_breakdown.volume.tier=unknown 并在 volume.basis 说明原因",
       "properties": {
         "min": { "type": "number" },
         "max": { "type": "number" },
@@ -145,18 +177,33 @@
     },
     "sources": {
       "type": "array",
+      "minItems": 1,
       "items": { "type": "string", "format": "uri" }
     },
     "priority": { "type": "integer" }
   },
-  "required": [
-    "company",
-    "country",
-    "segment",
-    "match_reason",
-    "risk_level",
-    "due_diligence_summary",
-    "contacts",
-    "sources"
+  "required": ["company", "country", "sources", "stage", "disposition"],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "disposition": {
+            "enum": ["competitor", "unreachable", "excluded"]
+          }
+        },
+        "required": ["disposition"]
+      },
+      "then": { "required": ["exclusion_reason"] }
+    },
+    {
+      "if": {
+        "properties": { "disposition": { "enum": ["main", "backup"] } },
+        "required": ["disposition"]
+      },
+      "then": {
+        "properties": { "stage": { "const": "scored" } },
+        "required": ["score", "score_breakdown", "risk_level", "segment"]
+      }
+    }
   ]
 }

@@ -235,6 +235,11 @@ def build_capability_map(
         capability_map["web_read"] = shell_fallback_capability(
             "curl", 'curl -s "https://r.jina.ai/{url}"'
         )
+        capability_map["web_read"]["note"] = (
+            "Fetches via Jina reader proxy (URL is sent to a third party). "
+            "Use only for public pages. Free tier may rate-limit or return empty — "
+            "on failure retry with direct curl to the origin or skip."
+        )
     else:
         capability_map["web_read"] = {
             "backend": "none",

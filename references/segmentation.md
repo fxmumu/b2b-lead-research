@@ -21,7 +21,7 @@
 
 ## 1.5 供需判定（供给侧硬闸门）
 
-skill 用户是**供方**；要找的是**需方**。归类客户类型前先做一次供需判定：候选与用户同品类、同环节的公司属供给侧，不是客户，按 SKILL.md Step 3 移入备选池标 `competitor` 或直接删除。
+skill 用户是**供方**；要找的是**需方**。归类客户类型前先做一次供需判定：候选与用户同品类、同环节的公司属供给侧，不是客户，按 SKILL.md Step 3 设 `disposition: competitor`（进排除清单，不打分、不占 `backup_n`）。
 
 判定信号（公开信息）：
 
@@ -42,8 +42,8 @@ skill 用户是**供方**；要找的是**需方**。归类客户类型前先做
 **裁决规则**：
 
 - 品类相同但环节不同 → 不是同行（例：用户是支架生产商，候选是支架安装商——后者是需方）
-- 既是同行又是潜在客户（如竞争对手偶尔也外采该品类）→ 默认按供给侧处理，移入备选池标 `competitor`，并在输出中说明，由用户定夺
-- 拿不准 → 不打分、不进主名单，标注「供需关系待确认」留待用户判断
+- 既是同行又是潜在客户（如竞争对手偶尔也外采该品类）→ 默认 `disposition: competitor`，在排除清单说明，由用户定夺
+- 拿不准 → `disposition: excluded`，`exclusion_reason` 写「供需关系待确认」，不打分、不进主名单/备选池
 
 **判定留痕**：每家的供需判定按 `assets/lead-schema.json` 的 `segment_evidence` 留证据——观察到的信号（demand_side / supply_side）、具体事实、来源 URL。判为需方至少要有一条 demand_side 证据；只有排除性推理（「查不到它在卖同类产品」）没有正面证据时，判定降级为待确认。
 
@@ -61,18 +61,20 @@ skill 用户是**供方**；要找的是**需方**。归类客户类型前先做
 - `epc` / `installer` 年采购额 ≈ 年项目总金额 × 该类材料占比（紧固件通常 0.5%–2%，按行业调整）
 - `distributor` / `importer` 年采购额 ≈ 年营收 × 该品类占比（默认 10%–30%）
 - `oem_buyer` 年采购额 ≈ 年产量 × 单台用量 × 该材料占比
-- 无法估算时标 `unknown`，不参与体量打分，但保留线索
+- 无法估算时：**省略** `estimated_annual_procurement_usd` 整段（不要写假的 min/max）；打分时 `score_breakdown.volume.tier` 设为 `unknown`，在 `volume.basis` 说明为何无法估算。不要把 unknown 写进 `match_reason`（该字段只解释客户类型匹配）。
 
 ## 3. 分档
 
-把估算年采购额映射到 `scoring.volume_tiers_annual_usd` 四档（A/B/C/D）。估算值落在两档边界之间时取较低档。
+把估算年采购额映射到 `scoring.volume_tiers_annual_usd` 四档（A/B/C/D）。估算值落在两档边界之间时取较低档。无法估算（已省略采购额字段）时不套 A–D 阈值，直接按下一节 `unknown` 计 volume。
 
 ## 4. 打分公式
 
-四项得分各映射到 0–1，按 `scoring.weights` 加权。**公式固定如下，不得自行变通**，保证同一配置下结果可复现：
+四项得分各映射到 0–1，按 `scoring.weights` 加权。**公式固定如下，不得自行变通**，保证同一配置下结果可复现。
 
-- fit：`fit = icp.type_weights[候选 segment 键名] / 5`。候选不属于 `icp.customer_types` 中任何一类时 fit = 0，直接移入备选池。
-- volume：按分档取值 `A=1.0, B=0.75, C=0.5, D=0.25`；无法估算（`unknown`）时 volume = 0.25（按最低档 D 计，不参与也不豁免）。
+**权重预处理**：若 `scoring.weights` 四项之和不等于 1（允许浮点误差 ±0.01），先按各项 / 总和归一化，再代入公式；并在 `score_breakdown` 的某一 `basis` 中注明「weights normalized」。
+
+- fit：`fit = icp.type_weights[候选 segment 键名] / 5`。候选不属于 `icp.customer_types` 中任何一类时 → `disposition: excluded`（ICP 不符），不打分。
+- volume：按分档取值 `A=1.0, B=0.75, C=0.5, D=0.25`；无法估算（`tier: unknown`）时 volume = 0.25（按最低档 D 计，不参与也不豁免）。
 - activity：`activity = min(近24个月可查项目/新闻数 ÷ (2 × icp.min_recent_projects), 1.0)`。即达到 min_recent_projects 的 2 倍即满分，0 条记 0。
 - accessibility：`accessibility = 0.5 × contact_score + 0.5 × decision_maker_score`，其中：
   - contact_score：存在带来源且置信度 high 的联系方式 = 1.0；仅 medium = 0.6；仅 low 或只有官网表单 = 0.3；无可触达通道 = 0
@@ -85,4 +87,4 @@ score = (w_fit × fit + w_volume × volume + w_activity × activity + w_accessib
         × region_weight
 ```
 
-地区权重按 `market.region_weights` 乘到总分（不在配置中的地区取 1）。低于 `scoring.min_score` 的候选移入备选池。
+`region_weight` 来自 `market.region_weights`（未命中取 1）。它是轻度地区偏好乘数，**建议配置在 1.0–1.5**（一般不超过 2.0）；过大（如 3）会把弱候选抬过 `min_score`，使门槛失效。打分在 Step 6 执行（须已完成 Step 5 联系方式验证）。低于 `scoring.min_score` 但已完整打分的候选可进入 `disposition: backup`（有分次优）；`competitor` / `unreachable` / `excluded` 不参与打分、不占 `backup_n`。
