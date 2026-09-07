@@ -6,10 +6,22 @@
 #   scripts/install.sh            # deploy to default hosts (claude-code, codex)
 #   scripts/install.sh --verify   # check existing links without changing anything
 #   scripts/install.sh --hosts claude-code,codex,myagent
+#
+# Requires the directory name to be exactly `b2b-lead-research` (it becomes
+# the skill ID in every host). If you downloaded a GitHub ZIP, the extracted
+# folder is `b2b-lead-research-master` — rename it first, or better, git clone.
 set -euo pipefail
 
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SKILL_NAME="$(basename "$SKILL_DIR")"
+
+if [[ "$SKILL_NAME" != "b2b-lead-research" ]]; then
+  echo "error: directory must be named 'b2b-lead-research' (it becomes the skill ID)."
+  echo "       Found '$SKILL_NAME'. A GitHub ZIP extracts to 'b2b-lead-research-master';"
+  echo "       rename it to 'b2b-lead-research' or git clone instead:"
+  echo "       git clone https://github.com/fxmumu/b2b-lead-research.git"
+  exit 2
+fi
 
 # Portable host registry: avoids `declare -A` (bash 4+); macOS ships bash 3.2.
 KNOWN_HOSTS="claude-code codex"
