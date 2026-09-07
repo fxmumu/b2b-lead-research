@@ -48,8 +48,9 @@ market:
   target_regions: []               # 目标国家/地区，例：[沙特, 阿联酋] 或 [Saudi Arabia, UAE]
   region_weights: {}               # 地区权重（乘到总分），键须与 target_regions 一致
                                    # 例：{沙特: 3}；不在其中的地区权重按 1 计
-  exclude_keywords: []             # 排除关键词：公司名/描述含这些词的候选剔除
-                                   # 例：[逆变器, 融资机构, inverter]
+  exclude_keywords: []             # 排除关键词：公司名/描述含这些词的候选剔除。
+                                   # 建议写入已知同行名与供给端词，例：
+                                   # [逆变器, 融资机构, inverter, <你的同行公司名>]
   top_n: 10                        # 主名单数量
   backup_n: 20                     # 备选池数量（不含主名单）
 
