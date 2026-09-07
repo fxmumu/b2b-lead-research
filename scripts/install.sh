@@ -11,10 +11,16 @@ set -euo pipefail
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SKILL_NAME="$(basename "$SKILL_DIR")"
 
-declare -A HOST_DIRS=(
-  ["claude-code"]="$HOME/.claude/skills"
-  ["codex"]="$HOME/.codex/skills"
-)
+# Portable host registry: avoids `declare -A` (bash 4+); macOS ships bash 3.2.
+KNOWN_HOSTS="claude-code codex"
+
+host_dir() {
+  case "$1" in
+    claude-code) echo "$HOME/.claude/skills" ;;
+    codex) echo "$HOME/.codex/skills" ;;
+    *) return 1 ;;
+  esac
+}
 
 is_source_dir() {
   [[ -d "$1" ]] && [[ "$(cd "$1" && pwd)" == "$SKILL_DIR" ]]
@@ -86,9 +92,9 @@ main() {
   echo "source: $SKILL_DIR"
   local failures=0
   for host in "${hosts[@]}"; do
-    local dir="${HOST_DIRS[$host]:-}"
-    if [[ -z "$dir" ]]; then
-      echo "  [skip]     $host: unknown host (known: ${!HOST_DIRS[*]})"
+    local dir
+    if ! dir="$(host_dir "$host")"; then
+      echo "  [skip]     $host: unknown host (known: $KNOWN_HOSTS)"
       continue
     fi
     if [[ "$mode" == "verify" ]]; then
@@ -98,9 +104,23 @@ main() {
     fi
   done
 
-  if [[ "$mode" == "deploy" && $failures -eq 0 ]]; then
+  if [[ "$failures" -gt 0 ]]; then
     echo
-    echo "Done. Start a NEW session in each host and confirm '$SKILL_NAME' appears in its skill list."
+    echo "Completed with $failures failure(s)."
+  elif [[ "$mode" == "deploy" ]]; then
+    local deployed_any=false
+    for host in "${hosts[@]}"; do
+      if host_dir "$host" >/dev/null; then
+        deployed_any=true
+      fi
+    done
+    if [[ "$deployed_any" == true ]]; then
+      echo
+      echo "Done. Start a NEW session in each host and confirm '$SKILL_NAME' appears in its skill list."
+    else
+      echo "No valid hosts specified (known: $KNOWN_HOSTS)."
+      exit 2
+    fi
   fi
   exit $failures
 }
