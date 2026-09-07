@@ -7,6 +7,57 @@
     "country": { "type": "string" },
     "segment": { "type": "string" },
     "match_reason": { "type": "string" },
+    "segment_evidence": {
+      "type": "array",
+      "description": "支撑供需判定（为何判为需方而非同行）的证据，每条含观察到的信号与来源 URL",
+      "items": {
+        "type": "object",
+        "properties": {
+          "signal": {
+            "type": "string",
+            "enum": ["demand_side", "supply_side"],
+            "description": "该条证据指向需求侧还是供给侧"
+          },
+          "observation": {
+            "type": "string",
+            "description": "观察到的具体事实，如：官网产品页含多品牌产品线、招聘安装工程师等"
+          },
+          "source": { "type": "string", "format": "uri" }
+        },
+        "required": ["signal", "observation", "source"]
+      }
+    },
+    "due_diligence_checks": {
+      "type": "array",
+      "description": "背调 5 个检查项的逐项结论，每项附来源 URL",
+      "items": {
+        "type": "object",
+        "properties": {
+          "check": {
+            "type": "string",
+            "enum": [
+              "authenticity",
+              "operating_status",
+              "business_relevance",
+              "risk_signals",
+              "reachability"
+            ],
+            "description": "对应 due-diligence.md 的检查项：真实性/经营状态/业务相关性/风险信号/触达有效性"
+          },
+          "finding": {
+            "type": "string",
+            "description": "查到了什么、依据是什么；查无实据也如实记录"
+          },
+          "source": { "type": "string", "format": "uri" },
+          "status": {
+            "type": "string",
+            "enum": ["confirmed", "inconclusive", "negative"],
+            "description": "confirmed=证据支持；inconclusive=证据不足存疑；negative=证据否定或有风险信号"
+          }
+        },
+        "required": ["check", "finding", "source", "status"]
+      }
+    },
     "estimated_annual_procurement_usd": {
       "type": "object",
       "properties": {
@@ -22,6 +73,57 @@
       "required": ["min", "max", "basis"]
     },
     "score": { "type": "number" },
+    "score_breakdown": {
+      "type": "object",
+      "description": "四项得分与总分推导依据，打分必须可复核（公式见 segmentation.md）",
+      "properties": {
+        "fit": {
+          "type": "object",
+          "properties": {
+            "value": { "type": "number" },
+            "basis": { "type": "string", "description": "如：segment=importer，icp.type_weights.importer=3，fit=3/5" }
+          },
+          "required": ["value", "basis"]
+        },
+        "volume": {
+          "type": "object",
+          "properties": {
+            "value": { "type": "number" },
+            "tier": { "type": "string", "enum": ["A", "B", "C", "D", "unknown"] },
+            "basis": { "type": "string", "description": "所用的代理指标与换算过程；unknown 时说明为何无法估算" }
+          },
+          "required": ["value", "basis"]
+        },
+        "activity": {
+          "type": "object",
+          "properties": {
+            "value": { "type": "number" },
+            "count": { "type": "integer", "description": "近 24 个月可查项目/新闻数" },
+            "basis": { "type": "string", "description": "计数口径与来源" }
+          },
+          "required": ["value", "basis"]
+        },
+        "accessibility": {
+          "type": "object",
+          "properties": {
+            "value": { "type": "number" },
+            "contact_score": { "type": "number" },
+            "decision_maker_score": { "type": "number" },
+            "basis": { "type": "string", "description": "联系通道与决策人识别情况" }
+          },
+          "required": ["value", "basis"]
+        },
+        "region_weight": {
+          "type": "object",
+          "properties": {
+            "value": { "type": "number" },
+            "basis": { "type": "string", "description": "命中的 market.region_weights 条目；未命中按 1 并注明" }
+          },
+          "required": ["value", "basis"]
+        }
+      },
+      "required": ["fit", "volume", "activity", "accessibility", "region_weight"]
+    },
     "risk_level": { "type": "string", "enum": ["low", "medium", "high"] },
     "due_diligence_summary": { "type": "string" },
     "contacts": {

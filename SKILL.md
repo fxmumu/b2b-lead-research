@@ -1,6 +1,6 @@
 ---
 name: b2b-lead-research
-version: "1.1.0"
+version: "1.2.0"
 display_name: B2B 外贸客户开发
 display_name_en: B2B Export Lead Research
 description: Research, qualify, and verify B2B potential customers/leads for a product or service, producing a prioritized, sourced contact list with due-diligence notes and outreach drafts. Use when the user asks to 找客户、获客、开发客户、找潜在客户、客户名单、找经销商/采购商/EPC/买家，or "find leads / find potential customers / lead generation / customer acquisition / find buyers". Reads a user-maintained config at leads.yaml in the working directory.
@@ -134,11 +134,15 @@ python3 <skill目录>/scripts/detect_backend.py
 
 按 `scoring.weights` 计算加权总分（公式见 segmentation.md），再按 `risk_level` 调整：high 风险移入备选池。得到主名单（`market.top_n`）和备选池（`market.backup_n`）。
 
+**打分留痕**：每家候选按 lead-schema 的 `score_breakdown` 记录四项得分、region_weight 及各自推导依据（用了什么代理指标、套的哪条公式）。总分必须能从 breakdown 复算出来，复算不出的打分视为无效。
+
 **主名单/备选池语义**：主名单 = 总分最高且 `risk_level != high`、`min_score` 达标的前 `top_n` 家；备选池 = 主名单之外得分次高的 `backup_n` 家，无论其分数是否达到 `min_score`——包括被可触达性过滤或高风险规则移下来的候选。若达标候选不足 `top_n`，如实输出较少的主名单，不放宽标准凑数。
 
 ## Step 7: 汇总交付
 
 按 [assets/lead-schema.json](assets/lead-schema.json) 输出字段，交付主表 + 备选池。若 `output.include_outreach_drafts: true`，用 [references/outreach.md](references/outreach.md) 为主名单客户生成开发信草稿，写入 `lead-research/outreach/`。
+
+**每个结论都要有论据支撑**：交付的不只是名单，还是一份可复核的论证。四类结论分别留痕——供需判定（`segment_evidence`）、背调（`due_diligence_checks`）、打分（`score_breakdown` + 估算 `basis`）、联系方式（`contacts.source` + `confidence`）。主表中的总结论（如「建议优先触达」）须能从这些留痕推导出来；汇报时论据跟随结论一起呈现，不以「我们判断」一笔带过。
 
 汇报时明确区分已验证信息、低置信度信息和未验证缺口。若本次会话未能跑完全部候选，如实说明已完成的数量与剩余缺口，并告知用户可继续时从落盘记录恢复。
 

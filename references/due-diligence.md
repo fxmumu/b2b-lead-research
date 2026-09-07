@@ -39,3 +39,12 @@
 - low：正常进入下一轮
 
 每个候选输出 `risk_level` 和 `due_diligence_summary`（2–3 句，说明依据）。
+
+## 论据留痕
+
+背调结论必须可复核。按 `assets/lead-schema.json` 的 `due_diligence_checks` 输出逐项证据：
+
+- 5 个检查项（authenticity / operating_status / business_relevance / risk_signals / reachability）各一条记录
+- 每条含 `finding`（查到了什么）、`source`（来源 URL）、`status`（confirmed / inconclusive / negative）
+- **查无实据也是结论**：某项没查到就如实标 inconclusive 并说明查了哪里，不留空、不臆测
+- `risk_level` 必须能从各检查项的 status 推导出来；推导不出时说明分级有误，回头重查
