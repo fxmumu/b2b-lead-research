@@ -22,7 +22,7 @@ description: Research, qualify, and verify B2B potential customers/leads for a p
 
 先读工作目录下的 `leads.yaml`（相对于当前会话工作目录，不在 skill 目录内）。它定义产品、供货能力、目标客户画像（ICP）、目标市场、打分权重和输出参数。
 
-- 文件不存在时：把 `config/leads.yaml.example` 复制为工作目录的 `leads.yaml`，然后向用户索要关键字段填写，不要臆造。
+- 文件不存在时：把 **skill 目录**下的 `config/leads.yaml.example` 复制为工作目录的 `leads.yaml`，然后向用户索要关键字段填写，不要臆造。skill 目录即本 skill 的安装位置（symlink 指向的仓库，如 `~/.claude/skills/b2b-lead-research`）。注意区分两类路径：本 skill 文档里的 `config/`、`references/`、`scripts/` 等相对 skill 目录解析；`leads.yaml` 与 `lead-research/` 相对当前工作目录解析。
 - 文件存在但关键字段为空时：先向用户索要，不要臆造。
 
 **开跑前必须向用户列出本次任务的情况与目标，逐项确认后再进入 Step 1**，内容包括：
@@ -49,10 +49,10 @@ description: Research, qualify, and verify B2B potential customers/leads for a p
 
 ## Step 1: 拆解搜索计划
 
-先解析当前执行环境的能力后端。运行：
+先解析当前执行环境的能力后端。在任意工作目录下运行（脚本路径相对 skill 目录）：
 
 ```bash
-python3 scripts/detect_backend.py
+python3 <skill目录>/scripts/detect_backend.py
 ```
 
 - 你如果清楚自己所在的宿主（如 `claude-code`、`codex`），显式传 `--host <宿主名>`，这是最可靠的识别方式；不确定就省略，脚本会从环境标记探测。
