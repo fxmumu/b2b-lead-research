@@ -7,6 +7,8 @@ Checks:
     enums, and disposition/stage gates)
   - stage-gated field presence for in-pipeline (pending) records
   - exclusion_reason when disposition is an exclusion class
+  - delivery-state (main/backup) hard evidence trail: segment_evidence,
+    due_diligence_checks (all 5), score_breakdown bases, contacts provenance
   - score ≈ weighted sum of breakdown when --config leads.yaml is given
 
 Usage:
@@ -29,6 +31,14 @@ SCHEMA_PATH = SKILL_DIR / "assets" / "lead-schema.json"
 STAGES = ("discovered", "screened", "diligenced", "verified", "scored")
 DISPOSITIONS = ("pending", "main", "backup", "competitor", "unreachable", "excluded")
 EXCLUSION_DISPOSITIONS = ("competitor", "unreachable", "excluded")
+DELIVERY_DISPOSITIONS = ("main", "backup")
+DD_CHECKS = (
+    "authenticity",
+    "operating_status",
+    "business_relevance",
+    "risk_signals",
+    "reachability",
+)
 SEGMENTS = (
     "end_user",
     "epc",
@@ -53,15 +63,22 @@ STAGE_FIELDS: dict[str, tuple[str, ...]] = {
     ),
     "verified": (
         "segment",
+        "segment_evidence",
         "risk_level",
         "due_diligence_summary",
+        "due_diligence_checks",
         "contacts",
     ),
     "scored": (
         "segment",
+        "segment_evidence",
         "risk_level",
+        "due_diligence_summary",
+        "due_diligence_checks",
+        "contacts",
         "score",
         "score_breakdown",
+        "match_reason",
     ),
 }
 
@@ -78,6 +95,156 @@ def try_jsonschema(record: dict[str, Any], schema: dict[str, Any]) -> list[str]:
     validator_cls = jsonschema.Draft202012Validator
     errors = sorted(validator_cls(schema).iter_errors(record), key=lambda e: list(e.path))
     return [f"{'/'.join(str(p) for p in e.path) or '<root>'}: {e.message}" for e in errors]
+
+
+def _nonempty_str(value: Any) -> bool:
+    return isinstance(value, str) and bool(value.strip())
+
+
+def _looks_like_uri(value: Any) -> bool:
+    return isinstance(value, str) and (value.startswith("http://") or value.startswith("https://"))
+
+
+def check_evidence_item(item: Any, prefix: str, path: str) -> list[str]:
+    errs: list[str] = []
+    if not isinstance(item, dict):
+        return [f"{prefix}: {path} must be an object"]
+    if item.get("signal") not in ("demand_side", "supply_side"):
+        errs.append(f"{prefix}: {path}.signal must be demand_side or supply_side")
+    if not _nonempty_str(item.get("observation")):
+        errs.append(f"{prefix}: {path}.observation must be a non-empty string")
+    if not _looks_like_uri(item.get("source")):
+        errs.append(f"{prefix}: {path}.source must be an http(s) URL")
+    return errs
+
+
+def check_dd_item(item: Any, prefix: str, path: str) -> list[str]:
+    errs: list[str] = []
+    if not isinstance(item, dict):
+        return [f"{prefix}: {path} must be an object"]
+    if item.get("check") not in DD_CHECKS:
+        errs.append(f"{prefix}: {path}.check must be one of {DD_CHECKS}")
+    if not _nonempty_str(item.get("finding")):
+        errs.append(f"{prefix}: {path}.finding must be a non-empty string")
+    if not _looks_like_uri(item.get("source")):
+        errs.append(f"{prefix}: {path}.source must be an http(s) URL")
+    if item.get("status") not in ("confirmed", "inconclusive", "negative"):
+        errs.append(f"{prefix}: {path}.status must be confirmed|inconclusive|negative")
+    return errs
+
+
+def check_delivery_evidence(record: dict[str, Any], line_no: int) -> list[str]:
+    """Hard-require the four evidence trails for main/backup delivery records."""
+    errs: list[str] = []
+    prefix = f"L{line_no}"
+    disposition = record.get("disposition")
+
+    evidence = record.get("segment_evidence")
+    if not isinstance(evidence, list) or len(evidence) < 1:
+        errs.append(f"{prefix}: disposition={disposition} requires non-empty segment_evidence")
+    else:
+        for i, item in enumerate(evidence):
+            errs.extend(check_evidence_item(item, prefix, f"segment_evidence[{i}]"))
+        if not any(
+            isinstance(item, dict) and item.get("signal") == "demand_side" for item in evidence
+        ):
+            errs.append(
+                f"{prefix}: disposition={disposition} requires ≥1 demand_side "
+                "entry in segment_evidence"
+            )
+
+    if not _nonempty_str(record.get("match_reason")):
+        errs.append(f"{prefix}: disposition={disposition} requires non-empty match_reason")
+
+    if not _nonempty_str(record.get("due_diligence_summary")):
+        errs.append(
+            f"{prefix}: disposition={disposition} requires non-empty due_diligence_summary"
+        )
+
+    checks = record.get("due_diligence_checks")
+    if not isinstance(checks, list) or len(checks) != 5:
+        errs.append(
+            f"{prefix}: disposition={disposition} requires due_diligence_checks "
+            "with exactly 5 items"
+        )
+    else:
+        seen: set[str] = set()
+        for i, item in enumerate(checks):
+            errs.extend(check_dd_item(item, prefix, f"due_diligence_checks[{i}]"))
+            if isinstance(item, dict) and item.get("check") in DD_CHECKS:
+                check_name = item["check"]
+                if check_name in seen:
+                    errs.append(f"{prefix}: duplicate due_diligence_checks.check={check_name}")
+                seen.add(check_name)
+        missing = [c for c in DD_CHECKS if c not in seen]
+        if missing:
+            errs.append(f"{prefix}: due_diligence_checks missing {missing}")
+
+    breakdown = record.get("score_breakdown")
+    if not isinstance(breakdown, dict):
+        errs.append(f"{prefix}: disposition={disposition} requires score_breakdown object")
+    else:
+        for part in ("fit", "volume", "activity", "accessibility", "region_weight"):
+            block = breakdown.get(part)
+            if not isinstance(block, dict):
+                errs.append(f"{prefix}: score_breakdown.{part} missing")
+                continue
+            if not isinstance(block.get("value"), (int, float)):
+                errs.append(f"{prefix}: score_breakdown.{part}.value must be a number")
+            if not _nonempty_str(block.get("basis")):
+                errs.append(f"{prefix}: score_breakdown.{part}.basis must be non-empty")
+
+    if "score" not in record or not isinstance(record.get("score"), (int, float)):
+        errs.append(f"{prefix}: disposition={disposition} requires numeric score")
+
+    contacts = record.get("contacts")
+    if not isinstance(contacts, list):
+        errs.append(f"{prefix}: disposition={disposition} requires contacts array (may be [])")
+    elif len(contacts) == 0:
+        # Empty contacts allowed only if reachability check documents the gap.
+        reach = None
+        for item in checks if isinstance(checks, list) else []:
+            if isinstance(item, dict) and item.get("check") == "reachability":
+                reach = item
+                break
+        finding = (reach or {}).get("finding", "")
+        if not _nonempty_str(finding):
+            errs.append(
+                f"{prefix}: empty contacts requires reachability.finding explaining "
+                "no public contact channel"
+            )
+    else:
+        for i, item in enumerate(contacts):
+            if not isinstance(item, dict):
+                errs.append(f"{prefix}: contacts[{i}] must be an object")
+                continue
+            if item.get("channel") not in ("email", "phone", "linkedin", "website_form"):
+                errs.append(f"{prefix}: contacts[{i}].channel invalid")
+            if not _nonempty_str(item.get("value")):
+                errs.append(f"{prefix}: contacts[{i}].value must be non-empty")
+            if not _looks_like_uri(item.get("source")):
+                errs.append(f"{prefix}: contacts[{i}].source must be an http(s) URL")
+            if item.get("confidence") not in ("high", "medium", "low"):
+                errs.append(f"{prefix}: contacts[{i}].confidence must be high|medium|low")
+
+    if disposition == "main" and record.get("risk_level") == "high":
+        errs.append(f"{prefix}: disposition=main cannot have risk_level=high (use excluded)")
+
+    return errs
+
+
+def check_competitor_evidence(record: dict[str, Any], line_no: int) -> list[str]:
+    errs: list[str] = []
+    prefix = f"L{line_no}"
+    evidence = record.get("segment_evidence")
+    if not isinstance(evidence, list) or len(evidence) < 1:
+        errs.append(f"{prefix}: disposition=competitor requires non-empty segment_evidence")
+        return errs
+    for i, item in enumerate(evidence):
+        errs.extend(check_evidence_item(item, prefix, f"segment_evidence[{i}]"))
+    if not any(isinstance(item, dict) and item.get("signal") == "supply_side" for item in evidence):
+        errs.append(f"{prefix}: disposition=competitor requires ≥1 supply_side segment_evidence")
+    return errs
 
 
 def builtin_check(record: dict[str, Any], line_no: int) -> list[str]:
@@ -99,29 +266,33 @@ def builtin_check(record: dict[str, Any], line_no: int) -> list[str]:
     sources = record.get("sources")
     if sources is not None and (not isinstance(sources, list) or len(sources) < 1):
         errs.append(f"{prefix}: sources must be a non-empty array")
+    elif isinstance(sources, list):
+        for i, src in enumerate(sources):
+            if not _looks_like_uri(src):
+                errs.append(f"{prefix}: sources[{i}] must be an http(s) URL")
 
     segment = record.get("segment")
     if segment is not None and segment not in SEGMENTS:
         errs.append(f"{prefix}: invalid segment {segment!r} (use taxonomy keys)")
 
-    if disposition in EXCLUSION_DISPOSITIONS and not record.get("exclusion_reason"):
+    if disposition in EXCLUSION_DISPOSITIONS and not _nonempty_str(record.get("exclusion_reason")):
         errs.append(f"{prefix}: disposition={disposition} requires exclusion_reason")
 
-    if disposition in ("main", "backup"):
+    if disposition in DELIVERY_DISPOSITIONS:
         if stage != "scored":
             errs.append(f"{prefix}: disposition={disposition} requires stage=scored")
-        for key in ("score", "score_breakdown", "risk_level", "segment"):
-            if key not in record:
-                errs.append(f"{prefix}: disposition={disposition} requires '{key}'")
+        errs.extend(check_delivery_evidence(record, line_no))
+
+    if disposition == "competitor":
+        errs.extend(check_competitor_evidence(record, line_no))
 
     if disposition == "pending" and stage in STAGE_FIELDS:
         for key in STAGE_FIELDS[stage]:
             if key not in record:
                 errs.append(f"{prefix}: stage={stage} pending record missing '{key}'")
-        # Competitors may stop at screened without segment; pending screened needs demand-side evidence.
-        if stage != "discovered" and stage in ("screened", "diligenced", "verified", "scored"):
+        if stage in ("screened", "diligenced", "verified", "scored"):
             evidence = record.get("segment_evidence")
-            if stage in ("screened", "diligenced") and not evidence:
+            if not evidence:
                 errs.append(f"{prefix}: stage={stage} requires segment_evidence")
 
     breakdown = record.get("score_breakdown")
@@ -231,7 +402,7 @@ def validate_file(path: Path, config: Path | None) -> int:
             js_errs = try_jsonschema(record, schema)
             errors.extend(f"L{line_no}: {e}" for e in js_errs)
             errors.extend(builtin_check(record, line_no))
-            if weights:
+            if weights and record.get("disposition") in DELIVERY_DISPOSITIONS:
                 errors.extend(check_score_math(record, weights, line_no))
 
             company = str(record.get("company", "")).strip().lower()

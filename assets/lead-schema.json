@@ -197,12 +197,61 @@
     },
     {
       "if": {
+        "properties": { "disposition": { "const": "competitor" } },
+        "required": ["disposition"]
+      },
+      "then": {
+        "required": ["segment_evidence"],
+        "properties": {
+          "segment_evidence": {
+            "type": "array",
+            "minItems": 1,
+            "description": "至少一条 supply_side 证据（由 validate_candidates.py 再校验信号类型）"
+          }
+        }
+      }
+    },
+    {
+      "if": {
         "properties": { "disposition": { "enum": ["main", "backup"] } },
         "required": ["disposition"]
       },
       "then": {
-        "properties": { "stage": { "const": "scored" } },
-        "required": ["score", "score_breakdown", "risk_level", "segment"]
+        "properties": {
+          "stage": { "const": "scored" },
+          "match_reason": { "type": "string", "minLength": 1 },
+          "due_diligence_summary": { "type": "string", "minLength": 1 },
+          "segment_evidence": {
+            "type": "array",
+            "minItems": 1,
+            "description": "至少一条证据；交付态须含至少一条 demand_side（脚本硬校验）"
+          },
+          "due_diligence_checks": {
+            "type": "array",
+            "minItems": 5,
+            "maxItems": 5,
+            "description": "五个检查项各一条，缺一不可"
+          },
+          "contacts": {
+            "type": "array",
+            "description": "可为 []（无公开联系方式时）；非空则每项必须有 source+confidence。空数组时 reachability 检查的 finding 须说明已检索且无公开通道"
+          },
+          "score_breakdown": {
+            "type": "object",
+            "required": ["fit", "volume", "activity", "accessibility", "region_weight"]
+          }
+        },
+        "required": [
+          "score",
+          "score_breakdown",
+          "risk_level",
+          "segment",
+          "match_reason",
+          "segment_evidence",
+          "due_diligence_checks",
+          "due_diligence_summary",
+          "contacts"
+        ]
       }
     }
   ]

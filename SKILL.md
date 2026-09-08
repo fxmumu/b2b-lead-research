@@ -1,6 +1,6 @@
 ---
 name: b2b-lead-research
-version: "1.3.2"
+version: "1.3.3"
 display_name: B2B 外贸客户开发
 display_name_en: B2B Export Lead Research
 description: Research, qualify, and verify B2B potential customers/leads for a product or service, producing a prioritized, sourced contact list with due-diligence notes and outreach drafts. Use when the user asks to 找客户、获客、外贸获客、开发客户、找潜在客户、客户名单、客户背调、开发信、找经销商/采购商/EPC/买家，or "find leads / lead list / find potential customers / lead generation / customer acquisition / find buyers". Reads a user-maintained config at leads.yaml in the working directory.
@@ -60,7 +60,7 @@ description_en: "For export businesses: research, qualify, and vet potential buy
 | `screened` | 已筛选 | segment（需方）、segment_evidence、体量估算；或已标排除类 disposition |
 | `diligenced` | 已背调 | risk_level、due_diligence_* |
 | `verified` | 已验联系方式 | contacts（可为空数组并注明无公开邮箱） |
-| `scored` | 已打分定稿 | score、score_breakdown；disposition ∈ {main, backup} |
+| `scored` | 已打分定稿 | 完整四类论据 + score；disposition ∈ {main, backup} |
 
 | `disposition` | 含义 | 是否占 `backup_n` |
 |---|---|---|
@@ -136,13 +136,23 @@ python3 <skill安装目录>/scripts/detect_backend.py
 - **备选池** (`disposition: backup`)：主名单之外、**有完整得分**的次高 `backup_n` 家（含未达 `min_score` 的）
 - **排除清单**：所有 `competitor` / `unreachable` / `excluded`，单独汇报，**不计入 `backup_n`**
 
-全部定稿后将入选者 `stage` 设为 `scored`。
+全部定稿后将入选者 `stage` 设为 `scored`。**`main` / `backup` 在通过校验前不得交付**：必须跑 `validate_candidates.py`，失败则补齐论据后再交付。
 
 ## Step 7: 汇总交付
 
 按 schema 字段交付三块：主名单、备选池、排除清单。`output.include_outreach_drafts: true` 时用 [references/outreach.md](references/outreach.md) 为主名单写草稿到 `lead-research/outreach/`。
 
-四类结论留痕：供需 (`segment_evidence`)、背调 (`due_diligence_checks`)、打分 (`score_breakdown`)、联系方式 (`contacts.source` + `confidence`)。汇报区分已验证 / 低置信 / 缺口；未跑完则说明进度与可续跑。
+**交付态硬校验（`disposition` ∈ {main, backup}）**——缺一不可，由 schema + `validate_candidates.py` 强制：
+
+1. 供需：`segment_evidence` ≥1，且至少一条 `demand_side`（含 observation + http(s) source）
+2. 背调：`due_diligence_summary` 非空；`due_diligence_checks` 恰好 5 条，覆盖 authenticity / operating_status / business_relevance / risk_signals / reachability，每条含 finding + source + status
+3. 打分：`score` + `score_breakdown` 五项均有 value 与非空 basis（可复算）
+4. 联系方式：`contacts` 数组必填；非空则每项含 source + confidence；若为 `[]`，则 reachability 的 finding 须说明已检索且无公开通道
+5. 其他：`match_reason` 非空；`main` 不得为 `risk_level: high`
+
+`competitor` 另须：`exclusion_reason` + 至少一条 `supply_side` 的 `segment_evidence`。
+
+汇报区分已验证 / 低置信 / 缺口；未跑完则说明进度与可续跑。
 
 ## 铁律
 
