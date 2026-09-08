@@ -13,7 +13,7 @@ Agent Skill：**供方找需方**——研究、筛选、背调 B2B 潜在客户
 4. 潜在客户背调（硬闸门，风险分级）
 5. 联系方式获取与验证（绝不猜测邮箱）
 6. 打分排序（公式固定；主名单 / 有分备选 / 排除清单三分）
-7. 汇总交付（可选开发信草稿）
+7. 汇总交付（校验后渲染 `delivery.md` / `delivery.html`，可选开发信草稿）
 
 支持断点续跑：`lead-research/candidates.jsonl` 为唯一真相源（含 `stage` / `disposition`），可用 `scripts/validate_candidates.py` 校验。
 

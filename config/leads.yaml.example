@@ -72,7 +72,10 @@ output:
   contact_preference: ["email", "phone", "linkedin"]  # 名单中优先展示的联系方式，按序排列
   include_outreach_drafts: true    # true 时为主名单每家生成一封开发信草稿（只起草，不发送）
   outreach_language: "en"          # 开发信语言，例：en / ar / zh
-  format: "markdown_table"         # 最终交付格式
+  format: "both"                   # 人读交付：markdown | html | both
+                                   # → lead-research/delivery.md 与/或 delivery.html
+                                   # （由 scripts/render_delivery.py 渲染，版式见 references/delivery.md）
+                                   # 旧值 markdown_table 视为 markdown
 
 verification:
   require_official_source_for_email: true   # true 时主名单邮箱必须 high 置信度

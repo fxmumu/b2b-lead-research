@@ -1,6 +1,6 @@
 ---
 name: b2b-lead-research
-version: "1.3.3"
+version: "1.4.0"
 display_name: B2B 外贸客户开发
 display_name_en: B2B Export Lead Research
 description: Research, qualify, and verify B2B potential customers/leads for a product or service, producing a prioritized, sourced contact list with due-diligence notes and outreach drafts. Use when the user asks to 找客户、获客、外贸获客、开发客户、找潜在客户、客户名单、客户背调、开发信、找经销商/采购商/EPC/买家，or "find leads / lead list / find potential customers / lead generation / customer acquisition / find buyers". Reads a user-maintained config at leads.yaml in the working directory.
@@ -140,7 +140,20 @@ python3 <skill安装目录>/scripts/detect_backend.py
 
 ## Step 7: 汇总交付
 
-按 schema 字段交付三块：主名单、备选池、排除清单。`output.include_outreach_drafts: true` 时用 [references/outreach.md](references/outreach.md) 为主名单写草稿到 `lead-research/outreach/`。
+1. 跑校验：`validate_candidates.py`（交付态论据必须通过）
+2. 按 [references/delivery.md](references/delivery.md) 用渲染脚本生成人读交付物（**禁止手写另起结构**）：
+
+```bash
+python3 <skill安装目录>/scripts/render_delivery.py lead-research/candidates.jsonl \
+  --config leads.yaml \
+  --brief lead-research/brief.md \
+  --out-dir lead-research
+```
+
+- `output.format`: `markdown` → `lead-research/delivery.md`；`html` → `delivery.html`；`both`（默认）两个都生成
+- 章节与表头固定见 delivery.md；机器真相源仍是 `candidates.jsonl`
+
+3. 若 `output.include_outreach_drafts: true`，用 [references/outreach.md](references/outreach.md) 为主名单写草稿到 `lead-research/outreach/`
 
 **交付态硬校验（`disposition` ∈ {main, backup}）**——缺一不可，由 schema + `validate_candidates.py` 强制：
 
@@ -152,7 +165,7 @@ python3 <skill安装目录>/scripts/detect_backend.py
 
 `competitor` 另须：`exclusion_reason` + 至少一条 `supply_side` 的 `segment_evidence`。
 
-汇报区分已验证 / 低置信 / 缺口；未跑完则说明进度与可续跑。
+汇报时指向 `delivery.md` / `delivery.html`；区分已验证 / 低置信 / 缺口；未跑完则说明进度与可续跑。
 
 ## 铁律
 
@@ -172,8 +185,10 @@ python3 <skill安装目录>/scripts/detect_backend.py
 - [references/sources.md](references/sources.md) — 线索来源与查询模板
 - [references/tools.md](references/tools.md) — 能力后端与降级链
 - [references/outreach.md](references/outreach.md) — 开发信模板
+- [references/delivery.md](references/delivery.md) — 人读交付物（MD/HTML）固定版式
 - [assets/lead-schema.json](assets/lead-schema.json) — 输出字段标准
 - [config/leads.yaml.example](config/leads.yaml.example) — 配置模板
 - [scripts/detect_backend.py](scripts/detect_backend.py) — 解析搜索/网页/LinkedIn 后端
 - [scripts/validate_candidates.py](scripts/validate_candidates.py) — 校验 candidates.jsonl
+- [scripts/render_delivery.py](scripts/render_delivery.py) — 渲染 delivery.md / delivery.html
 - [scripts/install.sh](scripts/install.sh) — 多宿主部署
