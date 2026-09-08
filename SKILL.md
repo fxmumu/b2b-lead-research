@@ -1,6 +1,6 @@
 ---
 name: b2b-lead-research
-version: "1.3.1"
+version: "1.3.2"
 display_name: B2B 外贸客户开发
 display_name_en: B2B Export Lead Research
 description: Research, qualify, and verify B2B potential customers/leads for a product or service, producing a prioritized, sourced contact list with due-diligence notes and outreach drafts. Use when the user asks to 找客户、获客、外贸获客、开发客户、找潜在客户、客户名单、客户背调、开发信、找经销商/采购商/EPC/买家，or "find leads / lead list / find potential customers / lead generation / customer acquisition / find buyers". Reads a user-maintained config at leads.yaml in the working directory.
@@ -89,7 +89,7 @@ python3 <skill安装目录>/scripts/detect_backend.py
 # Windows 若无 python3：改用 python
 ```
 
-- 清楚宿主时显式传 `--host`（如 `claude-code`、`codex`、`cursor`）；不确定可省略。
+- 清楚宿主时显式传 `--host`（如 `claude-code`、`codex`、`cursor`、`zcode`）；不确定可省略。
 - 严格按返回的 capability map 行动，不假设工具名。`backend: none` 按其 `note` 降级。
 - 仅在需要时加 `--doctor` / `--check-linkedin`。
 

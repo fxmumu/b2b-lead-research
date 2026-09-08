@@ -15,13 +15,13 @@
 #
 # WHAT IT DOES
 #   - Creates symlinks: ~/.claude/skills/b2b-lead-research -> this repo
-#     (also ~/.codex/skills and ~/.cursor/skills for those hosts)
+#     (also ~/.codex/skills, ~/.cursor/skills, ~/.zcode/skills)
 #   - Refuses to overwrite unrelated content, verifies links with --verify
 #
 # Usage:
-#   scripts/install.sh            # deploy to default hosts (claude-code, codex, cursor)
+#   scripts/install.sh            # deploy to default hosts (claude-code, codex, cursor, zcode)
 #   scripts/install.sh --verify   # check existing links without changing anything
-#   scripts/install.sh --hosts claude-code,codex,cursor
+#   scripts/install.sh --hosts claude-code,codex,cursor,zcode
 #
 # Requires the directory name to be exactly `b2b-lead-research` (it becomes
 # the skill ID in every host). If you downloaded a GitHub ZIP, the extracted
@@ -40,13 +40,14 @@ if [[ "$SKILL_NAME" != "b2b-lead-research" ]]; then
 fi
 
 # Portable host registry: avoids `declare -A` (bash 4+); macOS ships bash 3.2.
-KNOWN_HOSTS="claude-code codex cursor"
+KNOWN_HOSTS="claude-code codex cursor zcode"
 
 host_dir() {
   case "$1" in
     claude-code) echo "$HOME/.claude/skills" ;;
     codex) echo "$HOME/.codex/skills" ;;
     cursor) echo "$HOME/.cursor/skills" ;;
+    zcode) echo "$HOME/.zcode/skills" ;;
     *) return 1 ;;
   esac
 }
@@ -115,7 +116,7 @@ main() {
   if [[ -n "$hosts_arg" ]]; then
     IFS=',' read -ra hosts <<< "$hosts_arg"
   else
-    hosts=(claude-code codex cursor)
+    hosts=(claude-code codex cursor zcode)
   fi
 
   echo "source: $SKILL_DIR"

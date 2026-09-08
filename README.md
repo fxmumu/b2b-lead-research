@@ -2,7 +2,7 @@
 
 Agent Skill：**供方找需方**——研究、筛选、背调 B2B 潜在客户，产出带来源、打分排序的客户名单与开发信草稿。
 使用本 skill 的用户是供给侧（卖方），skill 负责找到需求侧（真正采购其产品的买家），并识别、排除与用户同品类同环节的同行。
-兼容 Codex、Claude Code 与 Cursor（同一 SKILL.md 格式），其他宿主通过能力清单扩展。
+兼容 Codex、Claude Code、Cursor 与 ZCode（同一 SKILL.md 格式），其他宿主通过能力清单扩展。
 
 ## 工作流程
 
@@ -19,7 +19,7 @@ Agent Skill：**供方找需方**——研究、筛选、背调 B2B 潜在客户
 
 ## 安装
 
-**装 skill 的本质**：把一个名为 `b2b-lead-research`（内含 `SKILL.md`）的目录放进宿主的 skills 目录（`~/.claude/skills/`、`~/.codex/skills/`、`~/.cursor/skills/`），仅此而已。目录名就是 skill ID，名字不对宿主就识别不了。
+**装 skill 的本质**：把一个名为 `b2b-lead-research`（内含 `SKILL.md`）的目录放进宿主的 skills 目录（`~/.claude/skills/`、`~/.codex/skills/`、`~/.cursor/skills/`、`~/.zcode/skills/`），仅此而已。目录名就是 skill ID，名字不对宿主就识别不了。
 
 **`scripts/install.sh` 不是必须的**。它只服务下面方式一：为 git 仓库建 symlink，让一次 `git pull` 同时升级所有宿主。不想用脚本就直接用方式二。
 
@@ -37,7 +37,7 @@ git clone https://github.com/fxmumu/b2b-lead-research.git ~/github.com/fxmumu/b2
 ```
 
 脚本行为：
-- 在 `~/.claude/skills/`、`~/.codex/skills/`、`~/.cursor/skills/` 下各建一个 symlink 指向仓库本体
+- 在 `~/.claude/skills/`、`~/.codex/skills/`、`~/.cursor/skills/`、`~/.zcode/skills/` 下各建一个 symlink 指向仓库本体
 - 目标位置已有其他内容时拒绝覆盖（`[conflict]`），目录名不对（如 ZIP 解压的 `-master` 后缀）时拒绝执行并给出指引
 - 退出码：0 成功；1 有冲突/缺失；2 用法错误
 
@@ -45,7 +45,7 @@ git clone https://github.com/fxmumu/b2b-lead-research.git ~/github.com/fxmumu/b2
 
 ```bash
 scripts/install.sh --verify            # 只校验不修改
-scripts/install.sh --hosts claude-code # 指定宿主（已知：claude-code, codex, cursor）
+scripts/install.sh --hosts claude-code # 指定宿主（已知：claude-code, codex, cursor, zcode）
 ```
 
 ### 方式二：直接 clone 进宿主 skills 目录（不跑脚本；**Windows 推荐**）
@@ -56,6 +56,7 @@ scripts/install.sh --hosts claude-code # 指定宿主（已知：claude-code, co
 git clone https://github.com/fxmumu/b2b-lead-research.git ~/.claude/skills/b2b-lead-research
 # codex: ~/.codex/skills/b2b-lead-research
 # cursor: ~/.cursor/skills/b2b-lead-research
+# zcode: ~/.zcode/skills/b2b-lead-research
 ```
 
 注意：若之后又在同一宿主跑方式一的 install.sh，脚本会识别出该目录就是源目录（`[source]`），不会重复建链。

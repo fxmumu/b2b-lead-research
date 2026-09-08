@@ -32,7 +32,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--host",
         default="",
-        help="Host identifier matching a manifest in capabilities/, e.g. claude-code or codex",
+        help="Host identifier matching a manifest in capabilities/, e.g. claude-code, codex, cursor, or zcode",
     )
     parser.add_argument(
         "--doctor",
