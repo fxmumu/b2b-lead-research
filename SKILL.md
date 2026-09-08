@@ -1,8 +1,8 @@
 ---
 name: b2b-lead-research
-version: "1.4.0"
-display_name: B2B 外贸客户开发
-display_name_en: B2B Export Lead Research
+version: "1.4.1"
+display_name: 客户开发
+display_name_en: Lead Research
 description: Research, qualify, and verify B2B potential customers/leads for a product or service, producing a prioritized, sourced contact list with due-diligence notes and outreach drafts. Use when the user asks to 找客户、获客、外贸获客、开发客户、找潜在客户、客户名单、客户背调、开发信、找经销商/采购商/EPC/买家，or "find leads / lead list / find potential customers / lead generation / customer acquisition / find buyers". Reads a user-maintained config at leads.yaml in the working directory.
 description_zh: 供方找需方：为外贸企业研究、筛选并背调潜在买家，产出可溯源、打分排序的客户名单与开发信草稿。
 description_en: "For export businesses: research, qualify, and vet potential buyers on the demand side, excluding same-category competitors, and deliver a sourced, scored lead list with outreach drafts."
