@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -114,11 +115,12 @@ def pick_contact(row: dict[str, Any], preference: list[str]) -> str:
     contacts = row.get("contacts")
     if not isinstance(contacts, list) or not contacts:
         return "—"
-    by_channel = {
-        c.get("channel"): c
-        for c in contacts
-        if isinstance(c, dict) and c.get("channel") in CONTACT_CHANNELS
-    }
+    # 同一渠道可能有多条（如多个邮箱）：保留记录中先出现的那条，
+    # 不要用 dict 推导让后出现的覆盖先出现的。
+    by_channel: dict[str, dict[str, Any]] = {}
+    for c in contacts:
+        if isinstance(c, dict) and c.get("channel") in CONTACT_CHANNELS:
+            by_channel.setdefault(c["channel"], c)
     order = [c for c in preference if c in CONTACT_CHANNELS] or list(CONTACT_CHANNELS)
     for ch in order:
         c = by_channel.get(ch)
@@ -176,6 +178,113 @@ def md_escape(text: Any) -> str:
 
 def html_esc(text: Any) -> str:
     return html.escape(str(text), quote=True)
+
+
+def brief_md_to_html(md: str) -> str:
+    """把 brief.md 转成 HTML 片段，供交付物内嵌展示。
+
+    只覆盖 brief 里实际会出现的语法：`#` 标题、`-` 无序列表、`1.` 有序列表、
+    段落、管道表格、`**粗体**`、`` `行内代码` ``。刻意不引入 markdown 依赖——
+    本脚本要求零第三方包也能直接跑。先做 HTML 转义再套内联标签，因此不会引入注入面。
+    """
+    out: list[str] = []
+    para: list[str] = []
+    stack: list[str] = []  # 当前打开的列表标签（ul / ol）
+
+    def inline(s: str) -> str:
+        s = html.escape(s, quote=False)
+        s = re.sub(r"`([^`]+)`", r"<code>\1</code>", s)
+        s = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", s)
+        return s
+
+    def flush_para() -> None:
+        if para:
+            out.append("<p>" + inline(" ".join(para).strip()) + "</p>")
+            para.clear()
+
+    def close_lists() -> None:
+        while stack:
+            out.append(f"</{stack.pop()}>")
+
+    def is_row(s: str) -> bool:
+        t = s.strip()
+        return t.startswith("|") and t.endswith("|") and t.count("|") >= 2
+
+    def split_row(s: str) -> list[str]:
+        t = s.strip()
+        if t.startswith("|"):
+            t = t[1:]
+        if t.endswith("|"):
+            t = t[:-1]
+        return [c.strip() for c in t.split("|")]
+
+    def is_sep(s: str) -> bool:
+        # |---|---| 形式的表头分隔行
+        if not is_row(s):
+            return False
+        cells = split_row(s)
+        return bool(cells) and all(re.fullmatch(r":?-{2,}:?", c) for c in cells)
+
+    lines = md.replace("\r\n", "\n").split("\n")
+    i, total = 0, len(lines)
+    while i < total:
+        line = lines[i].rstrip()
+        if not line.strip():
+            flush_para()
+            close_lists()
+            i += 1
+            continue
+
+        # 管道表格：本行是 | ... |，且下一行是分隔行
+        if is_row(line) and i + 1 < total and is_sep(lines[i + 1]):
+            flush_para()
+            close_lists()
+            header = split_row(line)
+            i += 2
+            body: list[list[str]] = []
+            while i < total and is_row(lines[i]):
+                body.append(split_row(lines[i]))
+                i += 1
+            width = len(header)
+            out.append('<div class="table-wrap"><table class="brief-table"><thead><tr>')
+            out.extend(f"<th>{inline(c)}</th>" for c in header)
+            out.append("</tr></thead><tbody>")
+            for r in body:
+                cells = (r + [""] * width)[:width]
+                out.append("<tr>" + "".join(f"<td>{inline(c)}</td>" for c in cells) + "</tr>")
+            out.append("</tbody></table></div>")
+            continue
+
+        m_head = re.match(r"^(#{1,6})\s+(.*)$", line)
+        if m_head:
+            flush_para()
+            close_lists()
+            # brief 的 # / ## 整体下移两级（→ h3 / h4），
+            # 让 section 自带的 <h2>Brief</h2> 保持唯一的区块级标题，文档大纲不出现两个 h2。
+            lvl = min(len(m_head.group(1)) + 2, 6)
+            out.append(f"<h{lvl}>{inline(m_head.group(2))}</h{lvl}>")
+            i += 1
+            continue
+
+        m_ul = re.match(r"^(\s*)[-*]\s+(.*)$", line)
+        m_ol = re.match(r"^(\s*)\d+[.)]\s+(.*)$", line)
+        if m_ul or m_ol:
+            flush_para()
+            want = "ul" if m_ul else "ol"
+            if not stack or stack[-1] != want:
+                close_lists()
+                out.append(f"<{want}>")
+                stack.append(want)
+            out.append(f"<li>{inline((m_ul or m_ol).group(2))}</li>")
+            i += 1
+            continue
+
+        para.append(line.strip())
+        i += 1
+
+    flush_para()
+    close_lists()
+    return "\n".join(out)
 
 
 def render_markdown(
@@ -328,28 +437,68 @@ CSS = """
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Songti SC", "Noto Serif CJK SC", "Source Han Serif SC", "PingFang SC", serif;
   color: var(--ink);
   background: var(--bg);
   line-height: 1.45;
 }
 header, main { max-width: 1080px; margin: 0 auto; padding: 1.5rem; }
-header h1 { font-size: 1.75rem; margin: 0 0 0.35rem; color: var(--accent); }
+header h1 { font-size: 1.55rem; margin: 0 0 0.35rem; color: var(--accent); text-wrap: balance; }
 header .meta { color: var(--muted); font-size: 0.95rem; }
 section { background: var(--card); border: 1px solid var(--line); padding: 1.25rem 1.4rem; margin: 1.25rem 0; }
 section h2 { margin-top: 0; font-size: 1.25rem; border-bottom: 1px solid var(--line); padding-bottom: 0.4rem; }
+/* 宽表在窄屏下改为横向滚动，而不是把列挤成一团 */
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
-th, td { border-bottom: 1px solid var(--line); padding: 0.45rem 0.4rem; text-align: left; vertical-align: top; }
+/* 用 break-word 而非 anywhere：anywhere 会把单元格的 min-content 宽度压到 1 个字符，
+   导致列被挤成竖排表头。break-word 只在必要时断词，不参与最小宽度计算。 */
+th, td { border-bottom: 1px solid var(--line); padding: 0.45rem 0.4rem; text-align: left; vertical-align: top; overflow-wrap: break-word; }
 th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
+table.leads { min-width: 62rem; }
+table.leads th:nth-child(2), table.leads td:nth-child(2) { min-width: 8rem; }
+table.leads th:nth-child(7), table.leads td:nth-child(7) { min-width: 10rem; }
+table.leads th:nth-child(8), table.leads td:nth-child(8) { min-width: 20rem; }
+table.exclusions { min-width: 46rem; }
+table.exclusions th:nth-child(5), table.exclusions td:nth-child(5) { min-width: 18rem; }
+/* Sources 列是整段无空格的 URL：只有 anywhere 才能把它纳入最小宽度计算，
+   否则单个长 URL 会把整张表撑出容器（break-word 不参与 min-content）。 */
+table.exclusions td:last-child { overflow-wrap: anywhere; }
 a { color: var(--accent); }
-.brief { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.85rem; background: #f0eee8; padding: 0.9rem; border: 1px solid var(--line); }
+/* brief.md 已转成 HTML（见 brief_md_to_html），这里按正文排版，不再用等宽 pre-wrap
+   把 Markdown 标记裸露出来。 */
+.brief { background: #faf8f5; padding: 0.35rem 1.1rem 0.9rem; border: 1px solid var(--line); overflow-wrap: anywhere; }
+.brief > :first-child { margin-top: 0.6rem; }
+.brief > :last-child { margin-bottom: 0; }
+.brief h3 { font-size: 1rem; margin: 1.05rem 0 0.4rem; color: var(--accent); }
+.brief h4 { font-size: 0.94rem; margin: 0.85rem 0 0.35rem; color: var(--ink); }
+.brief p { margin: 0.45rem 0; line-height: 1.62; }
+.brief ul, .brief ol { margin: 0.4rem 0 0.6rem; padding-left: 1.4rem; }
+.brief li { margin: 0.24rem 0; line-height: 1.6; }
+.brief code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.86em; background: #ece8e1; padding: 0.08em 0.32em; border-radius: 3px; }
+.brief strong { color: #2f2a24; }
+/* brief 里的管道表格：不要继承 leads/exclusions 的 min-width，也不要把表头大写化 */
+.brief .table-wrap { margin: 0.55rem 0 0.75rem; }
+.brief table.brief-table { min-width: 0; font-size: 0.88rem; }
+.brief table.brief-table th { text-transform: none; letter-spacing: 0; font-size: 0.85rem; }
+.brief table.brief-table th, .brief table.brief-table td { overflow-wrap: break-word; }
 details { border-top: 1px solid var(--line); padding: 0.7rem 0; }
 details:first-of-type { border-top: none; }
 summary { cursor: pointer; font-weight: 600; }
 .muted { color: var(--muted); }
 footer { max-width: 1080px; margin: 0 auto 2rem; padding: 0 1.5rem; color: var(--muted); font-size: 0.85rem; }
+@media (max-width: 700px) {
+  header, main { padding: 1rem 0.85rem; }
+  section { padding: 1rem 0.9rem; }
+  header h1 { font-size: 1.3rem; }
+  table { font-size: 0.86rem; }
+}
 @media print {
   body { background: #fff; }
+  .table-wrap { overflow: visible; }
+  /* 打印时取消最小宽度，让表格收缩到纸张宽度，避免被裁掉右侧列 */
+  table.leads, table.exclusions { min-width: 0; }
+  table.leads th:nth-child(n), table.leads td:nth-child(n),
+  table.exclusions th:nth-child(n), table.exclusions td:nth-child(n) { min-width: 0; }
   section { break-inside: avoid; border: none; padding: 0; margin: 1rem 0; }
   details[open] summary { margin-bottom: 0.4rem; }
 }
@@ -372,7 +521,7 @@ def render_html(
         if not items:
             return "<p class='muted'>None.</p>"
         parts = [
-            "<table><thead><tr>"
+            '<div class="table-wrap"><table class="leads"><thead><tr>'
             "<th>#</th><th>Company</th><th>Country</th><th>Segment</th>"
             "<th>Score</th><th>Risk</th><th>Contact</th><th>Match reason</th><th>Website</th>"
             "</tr></thead><tbody>"
@@ -396,14 +545,14 @@ def render_html(
                 f"<td>{web_cell}</td>"
                 "</tr>"
             )
-        parts.append("</tbody></table>")
+        parts.append("</tbody></table></div>")
         return "".join(parts)
 
     def exclusion_table(items: list[dict[str, Any]]) -> str:
         if not items:
             return "<p class='muted'>None.</p>"
         parts = [
-            "<table><thead><tr>"
+            '<div class="table-wrap"><table class="exclusions"><thead><tr>'
             "<th>#</th><th>Company</th><th>Country</th><th>Disposition</th>"
             "<th>Reason</th><th>Sources</th>"
             "</tr></thead><tbody>"
@@ -426,7 +575,7 @@ def render_html(
                 f"<td>{'<br>'.join(src_bits) if src_bits else '—'}</td>"
                 "</tr>"
             )
-        parts.append("</tbody></table>")
+        parts.append("</tbody></table></div>")
         return "".join(parts)
 
     def evidence_block(r: dict[str, Any]) -> str:
@@ -496,7 +645,7 @@ def render_html(
         return "".join(bits)
 
     brief_html = (
-        f"<section><h2>Brief</h2><div class='brief'>{html_esc(brief)}</div></section>"
+        f"<section><h2>Brief</h2><div class='brief'>{brief_md_to_html(brief)}</div></section>"
         if brief
         else ""
     )
@@ -506,8 +655,12 @@ def render_html(
         else "<p class='muted'>No main-list leads.</p>"
     )
 
+    # 正文以中文为主（match_reason / brief / 论据均为中文），
+    # 按标题是否含中日韩字符决定 lang，避免中文字形与断行按英文规则处理。
+    doc_lang = "zh-CN" if any("\u4e00" <= ch <= "\u9fff" for ch in title) else "en"
+
     return f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="{doc_lang}">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
