@@ -225,7 +225,7 @@ def build_capability_map(
         capability_map["search"] = {
             "backend": "none",
             "origin": "no_automated_search",
-            "note": "No automated search backend. Use official directories, company websites, and public registries via web_read.",
+            "note": "No automated search backend was resolved from the capability manifest. If your host actually provides a built-in search tool (e.g. WebSearch), use it instead of falling back to curl/Jina, and add capabilities/<host>.json so detect_backend resolves it next time. Otherwise use official directories, company websites, and public registries via web_read.",
         }
 
     native_read = resolve_native_capability(manifest, "web_read")
@@ -244,7 +244,7 @@ def build_capability_map(
         capability_map["web_read"] = {
             "backend": "none",
             "origin": "no_web_reader",
-            "note": "No web reader available. Install curl or provide a native page reader.",
+            "note": "No web reader available. Install curl or provide a native page reader. If your host actually provides a built-in page reader (e.g. WebFetch), use it, and add capabilities/<host>.json so detect_backend resolves it next time.",
         }
 
     native_linkedin = resolve_native_capability(manifest, "linkedin")

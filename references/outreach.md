@@ -24,6 +24,16 @@ Would you be open to a short intro call?
 Best,
 {{your_name}} — {{your_company}} — {{your_email}}
 
+## 输出约定
+
+- 落盘：每家主名单一封草稿，写到 `lead-research/outreach/<Company>.md`（公司名空格换下划线）；并生成 `lead-research/outreach/README.md` 索引（序号 / 公司 / 收件邮箱 / 文件）。
+- 署名与配置占位符（发出前必须全部替换）：
+  - `{{your_name}}` / `{{your_company}}` / `{{your_email}}` ← `company.name_zh|name_en` / `contact_email`
+  - `{{fob_port}}` ← `supply.fob_port`；`{{lead_time}}` ← `supply.lead_time_days`
+  - `{{product_or_service}}` ← `company.product_or_service`
+- 草稿头部用 HTML 注释标注收件邮箱与来源，便于核对：`<!-- To: <email> (<confidence> <source>) -->`。
+- 语言按 `output.outreach_language`（默认 en）。
+
 ## 分类型差异（按 segment 标准键名，见 segmentation.md 术语表）
 
 - `epc` / `installer`：强调项目供货、交期、标准合规

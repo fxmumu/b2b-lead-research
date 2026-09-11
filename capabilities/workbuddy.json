@@ -1,0 +1,32 @@
+{
+  "host": "workbuddy",
+  "detect_env": {
+    "env": {
+      "WORKBUDDY_CONFIG_DIR": true
+    },
+    "argv0_contains": ["workbuddy"]
+  },
+  "capabilities": {
+    "search": {
+      "backend": "native",
+      "tool": "WebSearch",
+      "note": "Accepts a natural-language query. Include the current year when searching for recent information. Returns sourced result blocks; always carry the source URLs into the lead record."
+    },
+    "web_read": {
+      "backend": "native",
+      "tool": "WebFetch",
+      "note": "Accepts URL + prompt; large pages may be summarized, so for raw HTML, PDFs, or directory listings prefer the shell fallback. WebFetch fails on authenticated pages — fall back to public sources only."
+    },
+    "linkedin": {
+      "backend": "public_only",
+      "note": "No login-gated LinkedIn access. Use public LinkedIn pages via web_read/shell, or the Agent Reach LinkedIn MCP when its session is verified. Never guess profile URLs."
+    }
+  },
+  "permissions_hints": [
+    "Bash(python3 scripts/detect_backend.py:*)",
+    "Bash(python3 scripts/validate_candidates.py:*)",
+    "Bash(dig +short MX:*)",
+    "Bash(nslookup -type=MX:*)",
+    "Bash(curl -s https://r.jina.ai/*)"
+  ]
+}

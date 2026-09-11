@@ -6,7 +6,7 @@
 
 1. 真实性
    - 官网是否存在、内容是否正规
-   - 当地商业注册/营业执照信息（如 UAE 的 DED、沙特 CR 号）
+   - 当地商业注册/营业执照信息（按地区取本地注册库：UAE DED、沙特 CR、Companies House（UK）、Companies NZ、Pappers（FR）、Handelsregister（DE）、KVK（NL）、州务卿 / SEC（US））
    - 是否出现在政府备案、行业协会或权威目录中
 
 2. 经营状态

@@ -1,8 +1,10 @@
 # 线索来源与查询模板
 
-## 需求端/供给端词根表
+本文件提供**通用框架**；具体来源清单按行业替换（见文末「分行业示例」）。查找目标始终是**需方**（买货的），不是**供方**（卖货的同行）。
 
-本 skill 找的是**需方**（买货的），不是**供方**（卖货的同行）。组合查询词时按下表选词根：
+## 1. 需求端 / 供给端词根表
+
+组合查询词时按下表选词根：
 
 | 需求端词根（找买家，优先用） | 供给端词根（会命中同行，慎用/只用于渠道型 ICP） |
 |---|---|
@@ -14,37 +16,57 @@
 
 注意：`supplier`/`exporter` 一词两头用——需方（分销商、进口商）的自我介绍里常说「we are a supplier of…」，供给端公司也说自己是 supplier。判定看**采购关系**（它从别处进货吗），不看称呼，细则见 segmentation.md 的供需判定。
 
-## 通用来源
+## 2. 通用来源类别（不依赖行业）
 
-- 政府/公用事业备案承包商名单
-- 行业展会参展商目录
-- 行业协会会员名单
-- 行业目录（如 ENF Solar）
-- 项目新闻/中标公告
-- 招标/采购平台
-- 公司官网、LinkedIn
+1. 政府 / 公用事业备案名单、招投标平台
+2. 行业展会参展商目录（按目标行业选展会）
+3. 行业协会会员名单
+4. 垂直行业目录 / B2B 平台（只取需方条目，跳过生产商）
+5. 项目 / 中标 / 采购新闻
+6. 公司官网（About / Products / 经销页）、LinkedIn
+7. 公司注册库（真实性核验用）：Companies House（UK）、Companies NZ、Pappers（FR）、Handelsregister（DE）、KVK（NL）、州务卿 / SEC（US）
 
-## 查询模板
+## 3. 通用查询模板
 
-- `<产品> + <地区> + (EPC OR installer OR contractor OR distributor OR importer)` — 需求端词根组合
-- `<产品> + <地区> + (tender OR award OR procurement)` — 项目/采购反查
+- `<产品> + <地区> + (buyer OR importer OR distributor OR contractor OR installer OR EPC)` — 需求端词根组合
+- `<产品> + <地区> + (tender OR award OR procurement)` — 项目 / 采购反查
 - `site:linkedin.com <产品> <地区> (purchasing OR procurement OR buyer)`
-- `site:enfsolar.com <品类> <国家> (EPC OR installer)` — 目录页只取服务类条目，跳过生产商
-- `<地区> solar/光伏 approved contractor list`
-- `<地区> tender/award <品类>`
+- `<地区> <品类> approved contractor / vendor list`
+- `<地区> dealer OR stockist OR stockists wanted <品类>` — 渠道型需方
+- `<品牌/品类> + (trade show OR expo OR fair) + exhibitor list` — 展会名录
 
-## 本地语言提示
+## 4. 本地语言提示（按目标市场替换）
 
-中东阿拉伯语关键词（按需）：
+用目标市场的本地语言扩展词根，例如：
 
-- طاقة شمسية（太阳能）
-- مقاول（承包商）
-- أنظمة تركيب（支架系统）
+- 法语：`cosmétique naturelle`、`acheteur`、`fournisseur de`
+- 德语：`natürliche Hautpflege`、`Einkauf`、`Lieferant`
+- 荷兰语：`natuurlijke huidverzorging`、`inkoper`
+- 阿拉伯语（中东）：`طاقة شمسية`（太阳能）、`مقاول`（承包商）、`أنظمة تركيب`（支架系统）
 
-## 区域补充
+## 5. 分行业示例（示例，非唯一）
 
-- 阿联酋：DEWA、ADDC/AADC 备案光伏承包商名单
-- 沙特：SaudiGulf Projects、本地 CR 商业注册
-- 卡塔尔/阿曼/巴林/约旦/埃及：本地商业目录与展会名录
+> 下列仅为**示例**，说明如何把通用框架落到具体行业；实际任务按 `leads.yaml` 的产品替换。
 
-优先用官方名单，其次是展会/协会，再次是第三方目录。
+### 例：光伏 / 支架（工程类）
+
+- 目录：ENF Solar（只取 EPC / installer 条目，跳过生产商）
+- 政府备案：阿联酋 DEWA / ADDC 备案承包商、沙特 SaudiGulf Projects
+- 模板：`site:enfsolar.com <品类> <国家> (EPC OR installer)`、`<地区> solar approved contractor list`
+- 本地语言：阿拉伯语「太阳能 / 承包商 / 支架系统」
+
+### 例：化妆品 / 护肤品包装（快消类）
+
+- 行业媒体：Paris Packaging Week、Formes de Luxe、Premium Beauty News、Cosmoprof 展商名录
+- 独立品牌榜单 / 社群：NewBeauty Indie 360、The Ethos、Sustainable Jungle、Beauty Independent
+- 公司注册：Companies NZ、Companies House（UK）、Pappers（FR）
+- 模板：`<地区> indie skincare brand founder`、`<地区> natural cosmetics brand (stockist OR retailer)`、`"made in <地区>" skincare glass packaging`
+
+### 例：通用机械 / 零部件（B2B 类）
+
+- 目录：行业展会（如 Hannover Messe）、Europages、ThomasNet（US）
+- 模板：`<地区> <部件> distributor OR importer`、`<地区> <部件> approved supplier list`
+
+## 6. 优先级
+
+优先用官方名单，其次是展会 / 协会，再次是第三方目录。
