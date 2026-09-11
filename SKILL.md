@@ -1,6 +1,6 @@
 ---
 name: b2b-lead-research
-version: "1.4.1"
+version: "1.4.2"
 display_name: 客户开发
 display_name_en: Lead Research
 description: Research, qualify, and verify B2B potential customers/leads for a product or service, producing a prioritized, sourced contact list with due-diligence notes and outreach drafts. Use when the user asks to 找客户、获客、外贸获客、开发客户、找潜在客户、客户名单、客户背调、开发信、找经销商/采购商/EPC/买家，or "find leads / lead list / find potential customers / lead generation / customer acquisition / find buyers". Reads a user-maintained config at leads.yaml in the working directory.
@@ -43,6 +43,10 @@ description_en: "For export businesses: research, qualify, and vet potential buy
 
 确认后写入 `lead-research/brief.md`（含 `leads.yaml` 修改时间作基线）。用户改了字段先落盘 `leads.yaml` 再继续。
 
+**续跑快速路径**：若 `lead-research/brief.md` 已存在，且 `leads.yaml` 的修改时间不晚于 brief 的基线，则跳过上述逐项确认，只复述配置摘要并请用户确认一次即可进 Step 1。进度以落盘为准（见下节）。
+
+**references 按需读取**：进入某一步时再读该步对应的那一篇，不必开跑前通读全部。只有 `references/sources.md`（查询模板）建议在 Step 1 一并看。
+
 ## 中间产物与断点续跑
 
 全量任务跨会话，必须增量落盘。工作目录下维护：
@@ -52,6 +56,12 @@ description_en: "For export businesses: research, qualify, and vet potential buy
 - `lead-research/outreach/` — 开发信草稿（可选）
 
 每完成一家的一个阶段，立即更新该条记录的 `stage` / `disposition` 及相关字段，不要攒到最后。
+
+**落盘方式**：直接增改 `candidates.jsonl` 的行——一行一条 JSON，用文件写入工具追加新行或改写对应行即可。
+
+- **不要生成中间脚本**（如 `_deepen.py`）去 load → patch → rewrite。它把同一份数据以源码形式重写一遍，既慢又容易引入字段名/枚举错误；jsonl 本身已是唯一真相源，无需再加一层。
+- **先校准再批量**：第一条记录（或第一家跑完 Step 3–5）写完后，**立即**跑一次 `validate_candidates.py`，确认字段名与枚举无误，再按批推进。schema 理解偏差越早暴露越省事，不要等到全部跑完才校验。
+- 需要批量改同一字段时，同样先改一条 → 校验通过 → 再对其余记录照做。
 
 **阶段与去向**（字段权威定义在 schema）：
 
@@ -74,7 +84,7 @@ description_en: "For export businesses: research, qualify, and vet potential buy
 
 恢复任务：读 `candidates.jsonl`，按 `stage` 只补下一阶段；`disposition` 已为排除类的不再推进。配置以工作目录 `leads.yaml` 为准；相对 `brief.md` 基线有变更时向用户确认。进度以落盘为准。
 
-每写完一批候选后运行：
+每写完一批（4–5 家，且第一条写完后先单独跑一次）后运行：
 
 ```bash
 python3 <skill安装目录>/scripts/validate_candidates.py lead-research/candidates.jsonl
@@ -82,6 +92,15 @@ python3 <skill安装目录>/scripts/validate_candidates.py lead-research/candida
 ```
 
 校验失败则先修记录再继续。
+
+## 批量与节流
+
+逐家深挖（Step 3–5）是全程最贵的一段（实测量级：每家的 5 项背调 + 联系方式约需 5 个独立信源、十余次溯源引用）。按批推进，不要一家一家串行：
+
+- **每批 4–5 家**。同一批内按「信源类别」并发取页（官网/About、媒体与新闻、LinkedIn、注册库/行业目录），而不是「先把 A 家全部查完，再开始 B 家」。
+- **同一页面只读一次**。一个信源类别命中即止；不重复检索同一信息，不为「再确认一下」反复搜同一关键词。
+- **每批结束落盘一次并跑校验**，再进下一批。
+- **明确止损**：拿不到的信息（如无公开邮箱）按 [references/verification.md](references/verification.md) 的止损规则记录现状并推进，不无限扩大检索。
 
 ## Step 1: 拆解搜索计划
 
@@ -103,11 +122,11 @@ python3 <skill安装目录>/scripts/detect_backend.py
 
 **去重**：域名为主键（去 `www.`、小写）；无官网用公司名小写去空格。已存在则只合并 `sources`，不新建。
 
-候选池至少 `market.backup_n` 的 2–3 倍。LinkedIn 人员搜索按 capability map 的 `linkedin` 项执行。
+候选池 ≥ (`market.top_n` + `market.backup_n`) × 1.5（向下取整）。`backup_n` 越大，发现与筛选成本线性上升——按实际需要设置，不追求凑满；确实找不到更多时如实少出，不靠降低筛选标准凑数。LinkedIn 人员搜索按 capability map 的 `linkedin` 项执行。
 
 ## Step 3: 资格筛选与可触达性过滤（不打分）
 
-用 [references/segmentation.md](references/segmentation.md)：
+按「批量与节流」分批推进。用 [references/segmentation.md](references/segmentation.md)：
 
 1. **供给侧硬闸门**：同品类同环节 → `disposition: competitor`，填 `exclusion_reason` 与 `segment_evidence`，`stage: screened`，**不打分、不占 backup_n**
 2. 归类 `segment`（标准键名）、对照 ICP；不符 → `disposition: excluded`
