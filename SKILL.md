@@ -39,6 +39,7 @@ description_en: "For export businesses: research, qualify, and vet potential buy
 3. 搜索计划：来源类别与查询语言
 4. 约束：`exclude_keywords`、可触达性过滤、`min_score`
 5. 交付物：主名单 + 备选池 + 排除清单；是否生成开发信草稿
+6. 开发信署名信息（仅当 `output.include_outreach_drafts: true`）：`company.name_zh` / `name_en` / `website` / `contact_email` / `contact_phone` / `address` 与 `supply.lead_time_days`。这些是开发信署名的必需项，缺失则草稿只能留占位符；用户暂无法提供时明确标注为待补，并在 Step 7 生成草稿前再确认一次
 
 确认后写入 `lead-research/brief.md`（含 `leads.yaml` 修改时间作基线）。用户改了字段先落盘 `leads.yaml` 再继续。
 
@@ -89,8 +90,9 @@ python3 <skill安装目录>/scripts/detect_backend.py
 # Windows 若无 python3：改用 python
 ```
 
-- 清楚宿主时显式传 `--host`（如 `claude-code`、`codex`、`cursor`、`zcode`）；不确定可省略。
+- 清楚宿主时显式传 `--host`（如 `claude-code`、`codex`、`cursor`、`zcode`、`workbuddy`）；不确定可省略。
 - 严格按返回的 capability map 行动，不假设工具名。`backend: none` 按其 `note` 降级。
+- 若宿主未被识别、`search` / `web_read` 被判为 `backend: none`，但当前 agent 实际具备内置搜索/读页工具，则优先使用内置工具，不要直接退回 curl/Jina；可用 `--host` 显式声明宿主，或补 `capabilities/<host>.json`。
 - 仅在需要时加 `--doctor` / `--check-linkedin`。
 
 按产品、ICP、目标市场生成并行查询；至少覆盖行业目录/展商、政府备案、项目新闻反查、官网与 LinkedIn。查询必须偏向需求侧（谁在买/用/装机/分销），与 buyer-side 词根组合，见 [references/sources.md](references/sources.md)。
@@ -133,7 +135,7 @@ python3 <skill安装目录>/scripts/detect_backend.py
 **交付语义**：
 
 - **主名单** (`disposition: main`)：`risk_level != high`、达到 `min_score`、总分最高的前 `top_n`；不足则如实少出，不凑数
-- **备选池** (`disposition: backup`)：主名单之外、**有完整得分**的次高 `backup_n` 家（含未达 `min_score` 的）
+- **备选池** (`disposition: backup`)：主名单之外、**有完整得分**的次高 `backup_n` 家（含未达 `min_score` 的）；不足 `backup_n` 时同样如实少出，不凑数
 - **排除清单**：所有 `competitor` / `unreachable` / `excluded`，单独汇报，**不计入 `backup_n`**
 
 全部定稿后将入选者 `stage` 设为 `scored`。**`main` / `backup` 在通过校验前不得交付**：必须跑 `validate_candidates.py`，失败则补齐论据后再交付。

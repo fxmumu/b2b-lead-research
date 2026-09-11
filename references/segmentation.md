@@ -75,7 +75,7 @@ skill 用户是**供方**；要找的是**需方**。归类客户类型前先做
 
 - fit：`fit = icp.type_weights[候选 segment 键名] / 5`。候选不属于 `icp.customer_types` 中任何一类时 → `disposition: excluded`（ICP 不符），不打分。
 - volume：按分档取值 `A=1.0, B=0.75, C=0.5, D=0.25`；无法估算（`tier: unknown`）时 volume = 0.25（按最低档 D 计，不参与也不豁免）。
-- activity：`activity = min(近24个月可查项目/新闻数 ÷ (2 × icp.min_recent_projects), 1.0)`。即达到 min_recent_projects 的 2 倍即满分，0 条记 0。
+- activity：`activity = min(近24个月可查项目/新闻数 ÷ (2 × icp.min_recent_projects), 1.0)`。即达到 min_recent_projects 的 2 倍即满分，0 条记 0。**计数口径按行业取代理**：工程/EPC 用中标、项目、装机；快消/品牌用上新发布、媒体报道、渠道扩张、活跃评论增长等。实际口径写进 `activity.basis`。
 - accessibility：`accessibility = 0.5 × contact_score + 0.5 × decision_maker_score`，其中：
   - contact_score：存在带来源且置信度 high 的联系方式 = 1.0；仅 medium = 0.6；仅 low 或只有官网表单 = 0.3；无可触达通道 = 0
   - decision_maker_score：能识别到采购/商务/BD 具体决策人 = 1.0；只能到公司层面（info 邮箱、前台电话）= 0.4；否则 0

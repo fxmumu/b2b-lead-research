@@ -35,6 +35,7 @@ python3 <skill安装目录>/scripts/detect_backend.py
 ## 规则
 
 - Agent Reach 缺失或未配置时，本 skill 仍应正常执行。
+- 若 capability map 未识别宿主、把 `search` / `web_read` 判为 `none`，但当前 agent 实际具备内置搜索/读页工具，应优先使用内置工具，不要直接退回 curl/Jina；可用 `--host` 显式声明宿主，或补 `capabilities/<host>.json`。
 - 最终线索仍必须遵守联系方式验证规则，不能因为使用 CLI 增强就降低来源标准。
 - LinkedIn 只用于公开线索核验和搜索入口，不猜测邮箱、个人主页 URL 或非公开联系方式。
 
