@@ -15,7 +15,7 @@ Agent Skill：**供方找需方**——研究、筛选、背调 B2B 潜在客户
 6. 打分排序（公式固定；主名单 / 有分备选 / 排除清单三分）
 7. 汇总交付（校验后渲染 `delivery.md` / `delivery.html`，可选开发信草稿）
 
-支持断点续跑：`lead-research/candidates.jsonl` 为唯一真相源（含 `stage` / `disposition`），可用 `scripts/validate_candidates.py` 校验。
+支持断点续跑：`lead-research/candidates.jsonl` 为唯一真相源（含 `stage` / `disposition`），可用 `scripts/validate_candidates.py` 校验。渲染出的 `delivery.html` 由 `scripts/validate_delivery.py` 校验（标签、`lang`、字体、表格滚动容器、Contact 列取值等）。
 
 ## 安装
 

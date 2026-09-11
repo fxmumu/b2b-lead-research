@@ -1,6 +1,6 @@
 ---
 name: b2b-lead-research
-version: "1.4.2"
+version: "1.4.3"
 display_name: 客户开发
 display_name_en: Lead Research
 description: Research, qualify, and verify B2B potential customers/leads for a product or service, producing a prioritized, sourced contact list with due-diligence notes and outreach drafts. Use when the user asks to 找客户、获客、外贸获客、开发客户、找潜在客户、客户名单、客户背调、开发信、找经销商/采购商/EPC/买家，or "find leads / lead list / find potential customers / lead generation / customer acquisition / find buyers". Reads a user-maintained config at leads.yaml in the working directory.
@@ -174,6 +174,15 @@ python3 <skill安装目录>/scripts/render_delivery.py lead-research/candidates.
 - `output.format`: `markdown` → `lead-research/delivery.md`；`html` → `delivery.html`；`both`（默认）两个都生成
 - 章节与表头固定见 delivery.md；机器真相源仍是 `candidates.jsonl`
 
+渲染 HTML 后**必须**再跑一次交付物校验，确认渲染没出问题（标签、`lang`、字体、表格滚动容器、Brief 是否残留 Markdown 标记、Contact 列取的是不是记录里的第一条联系方式）：
+
+```bash
+python3 <skill安装目录>/scripts/validate_delivery.py lead-research/delivery.html \
+  --candidates lead-research/candidates.jsonl
+```
+
+`validate_candidates.py` 守的是数据，`validate_delivery.py` 守的是渲染结果，两者都要过。
+
 3. 若 `output.include_outreach_drafts: true`，用 [references/outreach.md](references/outreach.md) 为主名单写草稿到 `lead-research/outreach/`
 
 **交付态硬校验（`disposition` ∈ {main, backup}）**——缺一不可，由 schema + `validate_candidates.py` 强制：
@@ -211,5 +220,10 @@ python3 <skill安装目录>/scripts/render_delivery.py lead-research/candidates.
 - [config/leads.yaml.example](config/leads.yaml.example) — 配置模板
 - [scripts/detect_backend.py](scripts/detect_backend.py) — 解析搜索/网页/LinkedIn 后端
 - [scripts/validate_candidates.py](scripts/validate_candidates.py) — 校验 candidates.jsonl
+- [scripts/validate_delivery.py](scripts/validate_delivery.py) — 校验渲染出的 delivery.html
 - [scripts/render_delivery.py](scripts/render_delivery.py) — 渲染 delivery.md / delivery.html
 - [scripts/install.sh](scripts/install.sh) — 多宿主部署
+
+## 变更记录
+
+- **1.4.3** — 修 `render_delivery.py` 渲染缺陷：`pick_contact()` 同渠道多条时后出现者覆盖先出现者（导致表格显示错误邮箱）；HTML `lang` 写死 `en`；中文字体未入栈；宽表在窄屏被挤成竖排表头；`brief.md` 原样倾倒导致 Markdown 标记裸露（新增 `brief_md_to_html()`，含管道表格）；补 `@media print` 防止打印裁掉右侧列。新增 `scripts/validate_delivery.py` 作为渲染结果的自动门禁。详见 [references/delivery.md](references/delivery.md#渲染约束改动-css-前先读)。
